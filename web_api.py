@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # TennineClaw - FastAPI Web API 层
 # ============================================================
 # 提供完整的 RESTful API，支持：
@@ -51,7 +51,7 @@ _session_registry = SessionRegistry()
 _default_session_id = _session_registry.create("default")
 _session_registry.set_active(_default_session_id)
 
-# 向后兼容：保留 _session / _session_lock 引用默认会话
+# 保留 _session / _session_lock 引用默认会话
 _session = _session_registry.get("default")
 _session_lock = _session_registry.get_lock("default")
 
@@ -331,7 +331,7 @@ async def index():
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    """发送聊天消息，返回 AI 回复（非流式，向后兼容）"""
+    """发送聊天消息，返回 AI 回复（非流式）"""
     if not req.message or not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
 
@@ -1217,3 +1217,5 @@ def start_web_api(host="127.0.0.1", port=None):
 
 if __name__ == "__main__":
     start_web_api()
+
+

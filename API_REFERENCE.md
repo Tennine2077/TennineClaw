@@ -1,4 +1,4 @@
-# TennineClaw 函数参考
+﻿# TennineClaw 函数参考
 
 > 版本：11.0.0 | 自动生成于 2026-05-20
 
@@ -185,7 +185,7 @@ FastAPI Web 服务。37 条 REST API 路由，处理前端请求。
 | `_split_into_rounds(msgs)` | 将消息按轮次分组 |
 | `_build_history_text(msgs, preserve_last)` | 构建待压缩的历史文本 |
 | `_llm_compress(text, max_chars)` | 调用 LLM 做语义摘要 |
-| `compact_messages(session)` | 兼容旧接口 |
+| `compact_messages(session)` | 消息压缩包装 |
 
 ### mode_manager.py
 
@@ -248,7 +248,7 @@ Token 统计与格式化。
 | 函数 | 说明 |
 |------|------|
 | `tool_run_cmd(command, workdir)` | 执行系统命令（带安全检测） |
-| `tool_run_cmd_compat(kwargs)` | 旧版 dict 参数兼容接口 |
+| `tool_run_cmd_compat(kwargs)` | dict 参数版本 |
 
 ### tools/file_ops.py
 
@@ -259,9 +259,9 @@ Token 统计与格式化。
 | `tool_read_file(path)` | 读取文件完整内容 |
 | `tool_write_file(path, content)` | 写入/覆盖文件 |
 | `tool_delete_file(path)` | 删除文件或空目录 |
-| `tool_read_file_compat(kwargs)` | 旧版兼容 |
-| `tool_write_file_compat(kwargs)` | 旧版兼容 |
-| `tool_delete_file_compat(kwargs)` | 旧版兼容 |
+| `tool_read_file_compat(kwargs)` | dict 参数版本 |
+| `tool_write_file_compat(kwargs)` | dict 参数版本 |
+| `tool_delete_file_compat(kwargs)` | dict 参数版本 |
 
 ### tools/dir_ops.py
 
@@ -406,3 +406,5 @@ API 调用封装。
 ---
 
 > 本文档覆盖 TennineClaw 项目全部模块和主要函数。
+
+

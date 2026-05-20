@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # 运行模式管理器
 # ============================================================
 # 管理两种运行模式：
@@ -62,7 +62,7 @@ class ModeManager:
     def check_plan_file_exists(self) -> bool:
         return os.path.exists(PLAN_FILE)
 
-    # ── v2.2.0: 新增 — 仅检查 Plan 是否已就绪（不检查 _plan_menu_shown） ──
+    # ── 仅检查 Plan 是否已就绪（不检查 _plan_menu_shown） ──
     def is_plan_ready(self) -> bool:
         """判断 Plan 是否已就绪（plan.md 已存在且处于 planning 阶段）
         与 should_show_plan_menu() 不同，此方法不检查 _plan_menu_shown，
@@ -107,3 +107,4 @@ class ModeManager:
             ),
         }
         return descriptions.get(self.mode, "未知模式")
+

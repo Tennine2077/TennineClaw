@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # 会话管理器
 # ============================================================
 # 提供会话的保存与恢复、标题管理、自动保存、列表浏览等功能。
@@ -58,7 +58,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         _stats = f"输入: {_tokens:,}"
     
     data = {
-        "version": "10.0.0",
+        "version": "1.0.0",
         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "session_title": getattr(session, "session_title", ""),
         "mode": session.get_mode(),
@@ -66,7 +66,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         "msgs": session.msgs,
         "current_tokens": _tokens,
         "completion_tokens": getattr(session, "completion_tokens", 0),
-        "session_completion_tokens": getattr(session, "session_completion_tokens", 0),  # v10.1.4: 累计输出 Token
+        "session_completion_tokens": getattr(session, "session_completion_tokens", 0),  # 累计输出 Token
         "total_tokens": getattr(session, "total_tokens", 0) or _tokens,
         "last_token_stats": _stats,
         # Composer 统计
@@ -76,7 +76,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         "composer_notification": getattr(session, "composer_notification", ""),
         # Python 环境
         "python_env": getattr(session, "python_env", ""),
-        # v10.3.1: 用户原始输入记录
+        # 用户原始输入记录
         "original_user_inputs": getattr(session, "original_user_inputs", {}),
         "optimized_prompts": getattr(session, "optimized_prompts", {}),
         "message_count": len(session.msgs),
@@ -86,7 +86,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
     if path:
         save_path = path
     elif getattr(session, '_session_save_path', None):
-        # v11.0.0: 如果 session 已关联文件路径，覆写原文件
+        # 如果 session 已关联文件路径，覆写原文件
         save_path = session._session_save_path
     else:
         title = data["session_title"] or "untitled"
@@ -131,7 +131,7 @@ def restore_session(session, path: str) -> str:
             pass
     session.current_tokens = _loaded_tokens
     session.completion_tokens = data.get("completion_tokens", 0)
-    session.session_completion_tokens = data.get("session_completion_tokens", 0)  # v10.1.4: 恢复累计输出 Token
+    session.session_completion_tokens = data.get("session_completion_tokens", 0)  # 恢复累计输出 Token
     session.total_tokens = data.get("total_tokens", _loaded_tokens)
     session.last_token_stats = data.get("last_token_stats", "")
     if not session.last_token_stats and session.current_tokens > 0:
@@ -152,7 +152,7 @@ def restore_session(session, path: str) -> str:
     if python_env:
         session.python_env = python_env
     
-    # v10.3.1: 恢复用户原始输入记录和优化 Prompt 记录
+    # 恢复用户原始输入记录和优化 Prompt 记录
     session.original_user_inputs = data.get("original_user_inputs", {})
     session.optimized_prompts = data.get("optimized_prompts", {})
     # 转换 key 为 int（JSON 序列化时 int key 会变成字符串）
@@ -359,6 +359,7 @@ class SessionRegistry:
     def all_sessions(self) -> Dict[str, Any]:
         """获取所有会话"""
         return dict(self._sessions)
+
 
 
 

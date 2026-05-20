@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # TennineClaw - 智能终端助手（Gradio 版）
 # ============================================================
 # 主入口：包含对话逻辑、API 交互、工具调度
@@ -581,7 +581,7 @@ class AgentSession(AgentSessionStreamMixin):
         self._round_count += 1
 
     # ============================================================
-    # 同步处理（保留向后兼容）
+    # 同步处理
     # ============================================================
 
     def process_message(self, user_input: str) -> str:
@@ -867,3 +867,4 @@ class AgentSession(AgentSessionStreamMixin):
             desc = tool["function"]["description"]
             lines.append(f"- **{name}**: {desc}")
         return "\n".join(lines)
+

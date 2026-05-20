@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # TennineClaw - 文件操作工具
 # ============================================================
 # 包含：读取文件、写入文件、删除文件（带安全路径检查）
@@ -109,10 +109,10 @@ def tool_delete_file(path: str = "") -> str:
 
 
 # ============================================================
-# 向后兼容包装器 — 支持旧版 dict 参数调用
+# dict 参数包装器
 # ============================================================
 def tool_read_file_compat(args: dict = None) -> str:
-    """向后兼容版本：接受 dict 参数调用 tool_read_file
+    """接受 dict 参数调用 tool_read_file
 
     Args:
         args: 包含 "path" 键的参数字典
@@ -126,7 +126,7 @@ def tool_read_file_compat(args: dict = None) -> str:
 
 
 def tool_write_file_compat(args: dict = None) -> str:
-    """向后兼容版本：接受 dict 参数调用 tool_write_file
+    """接受 dict 参数调用 tool_write_file
 
     Args:
         args: 包含 "path" 和 "content" 键的参数字典
@@ -140,7 +140,7 @@ def tool_write_file_compat(args: dict = None) -> str:
 
 
 def tool_delete_file_compat(args: dict = None) -> str:
-    """向后兼容版本：接受 dict 参数调用 tool_delete_file
+    """接受 dict 参数调用 tool_delete_file
 
     Args:
         args: 包含 "path" 键的参数字典
@@ -151,3 +151,8 @@ def tool_delete_file_compat(args: dict = None) -> str:
     if args is None:
         args = {}
     return tool_delete_file(path=args.get("path", ""))
+
+
+
+
+
