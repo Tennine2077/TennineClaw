@@ -1,10 +1,10 @@
-ï»¿/* ============================================================
-   TennineClaw - ç°ä»£åŒ– UI æ ·å¼
-   æ”¯æŒæ·±è‰²/æµ…è‰²åŒä¸»é¢˜ + å“åº”å¼è®¾è®¡
-   v10.1.0 - æ–°å¢æµå¼æ¸²æŸ“å…‰æ ‡åŠ¨ç”» + å·¥å…·è°ƒç”¨/æ€è€ƒè¿‡ç¨‹æ ·å¼
+/* ============================================================
+   TennineClaw - ÏÖ´ú»¯ UI ÑùÊ½
+   Ö§³ÖÉîÉ«/Ç³É«Ë«Ö÷Ìâ + ÏìÓ¦Ê½Éè¼Æ
+   v1.0.0 - ĞÂÔöÁ÷Ê½äÖÈ¾¹â±ê¶¯»­ + ¹¤¾ßµ÷ÓÃ/Ë¼¿¼¹ı³ÌÑùÊ½
    ============================================================ */
 
-/* ---------- CSS å˜é‡ï¼ˆä¸»é¢˜å®šä¹‰ï¼‰ ---------- */
+/* ---------- CSS ±äÁ¿£¨Ö÷Ìâ¶¨Òå£© ---------- */
 :root,
 [data-theme="light"] {
     --bg-primary: #f5f7fa;
@@ -71,7 +71,7 @@
     --toast-text: #f9fafb;
 }
 
-/* ---------- å…¨å±€é‡ç½® ---------- */
+/* ---------- È«¾ÖÖØÖÃ ---------- */
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -102,7 +102,7 @@ html, body {
     background: var(--text-muted);
 }
 
-/* ---------- é¡¶éƒ¨å¯¼èˆª ---------- */
+/* ---------- ¶¥²¿µ¼º½ ---------- */
 .header {
     position: fixed;
     top: 0;
@@ -209,7 +209,7 @@ html, body {
     font-weight: 500;
 }
 
-/* ---------- ä¸»å¸ƒå±€ ---------- */
+/* ---------- Ö÷²¼¾Ö ---------- */
 .main-layout {
     display: flex;
     height: calc(100vh - var(--header-height));
@@ -217,7 +217,7 @@ html, body {
     overflow: hidden;
 }
 
-/* ---------- å·¦ä¾§ä¼šè¯æ ï¼ˆChatGPT é£æ ¼ï¼‰ ---------- */
+/* ---------- ×ó²à»á»°À¸£¨ChatGPT ·ç¸ñ£© ---------- */
 .left-sidebar {
     width: 280px;
     min-width: 280px;
@@ -233,7 +233,7 @@ html, body {
     margin-left: -280px;
 }
 
-/* æ–°å¼€ä¼šè¯æŒ‰é’® */
+/* ĞÂ¿ª»á»°°´Å¥ */
 .new-chat-wrapper {
     padding: 12px;
     flex-shrink: 0;
@@ -265,7 +265,7 @@ html, body {
     font-size: 16px;
 }
 
-/* ä¼šè¯æœç´¢ */
+/* »á»°ËÑË÷ */
 .session-search-wrapper {
     padding: 0 12px 8px;
     flex-shrink: 0;
@@ -290,7 +290,7 @@ html, body {
     color: var(--text-muted);
 }
 
-/* ä¼šè¯åˆ—è¡¨ */
+/* »á»°ÁĞ±í */
 .session-list {
     flex: 1;
     overflow-y: auto;
@@ -304,7 +304,7 @@ html, body {
     font-size: 13px;
 }
 
-/* ä¼šè¯é¡¹ */
+/* »á»°Ïî */
 .session-item {
     display: flex;
     flex-direction: column;
@@ -374,7 +374,7 @@ html, body {
     background: var(--bg-primary);
 }
 
-/* æ—¥æœŸåˆ†ç»„æ ‡é¢˜ */
+/* ÈÕÆÚ·Ö×é±êÌâ */
 .session-date-header {
     font-size: 11px;
     font-weight: 600;
@@ -384,7 +384,7 @@ html, body {
     border-bottom: 1px solid var(--border-light);
 }
 
-/* ---------- èŠå¤©åŒºåŸŸï¼ˆä¸­é—´ï¼‰ ---------- */
+/* ---------- ÁÄÌìÇøÓò£¨ÖĞ¼ä£© ---------- */
 .chat-area {
     flex: 1;
     display: flex;
@@ -393,7 +393,7 @@ html, body {
     position: relative;
 }
 
-/* ---------- å³ä¾§æ§åˆ¶é¢æ¿ ---------- */
+/* ---------- ÓÒ²à¿ØÖÆÃæ°å ---------- */
 .right-sidebar {
     width: var(--sidebar-width);
     min-width: var(--sidebar-width);
@@ -406,7 +406,7 @@ html, body {
     gap: 10px;
 }
 
-/* ---------- ä¼šè¯æ ‡é¢˜ ---------- */
+/* ---------- »á»°±êÌâ ---------- */
 .session-header {
     padding: 12px 20px;
     background: var(--gradient-primary);
@@ -428,7 +428,7 @@ html, body {
     text-overflow: ellipsis;
 }
 
-/* æ¨¡å‹åˆ‡æ¢å™¨ */
+/* Ä£ĞÍÇĞ»»Æ÷ */
 .header-spacer {
     flex: 1;
 }
@@ -517,7 +517,7 @@ html, body {
     border-color: rgba(255,255,255,0.5);
 }
 
-/* ---------- æ¶ˆæ¯å®¹å™¨ ---------- */
+/* ---------- ÏûÏ¢ÈİÆ÷ ---------- */
 .messages-container {
     flex: 1;
     overflow-y: auto;
@@ -576,7 +576,7 @@ html, body {
     font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
 }
 
-/* ---------- æ¶ˆæ¯æ°”æ³¡ ---------- */
+/* ---------- ÏûÏ¢ÆøÅİ ---------- */
 .message {
     display: flex;
     gap: 12px;
@@ -640,7 +640,7 @@ html, body {
     border-bottom-left-radius: 4px;
 }
 
-/* æ¶ˆæ¯å†… Markdown æ ·å¼ */
+/* ÏûÏ¢ÄÚ Markdown ÑùÊ½ */
 .message-content p {
     margin-bottom: 8px;
 }
@@ -726,7 +726,7 @@ html, body {
     word-break: break-all;
 }
 
-/* â”€â”€ æ·»åŠ æ¨¡å‹å¼¹çª— â”€â”€ */
+/* ©¤©¤ Ìí¼ÓÄ£ĞÍµ¯´° ©¤©¤ */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -792,7 +792,7 @@ html, body {
     display: inline-block;
 }
 
-/* ---------- Token ç”¨é‡é¢æ¿ ---------- */
+/* ---------- Token ÓÃÁ¿Ãæ°å ---------- */
 .token-panel {
     display: flex;
     flex-direction: column;
@@ -845,7 +845,7 @@ html, body {
     font-weight: 500;
 }
 
-/* Badge é¢œè‰²æ‰©å±• */
+/* Badge ÑÕÉ«À©Õ¹ */
 .badge-purple {
     background: #e8d4f8;
     color: #6b21a8;
@@ -862,7 +862,7 @@ html, body {
 }
 
 
-/* ---------- è¾“å…¥åŒºåŸŸ ---------- */
+/* ---------- ÊäÈëÇøÓò ---------- */
 .input-area {
     padding: 12px 20px 16px;
     background: var(--bg-secondary);
@@ -871,7 +871,7 @@ html, body {
 }
 
 /* ============================================================
-   v10.4.0: ä¼šè¯æ ‡ç­¾
+   v1.0.0: »á»°±êÇ©
    ============================================================ */
 .session-tabs {
     display: flex;
@@ -939,7 +939,7 @@ html, body {
 }
 
 /* ============================================================
-   v10.4.0: æ‰“æ–­æŒ‰é’®
+   v1.0.0: ´ò¶Ï°´Å¥
    ============================================================ */
 .interrupt-btn {
     width: 40px;
@@ -1031,7 +1031,7 @@ html, body {
     text-align: right;
 }
 
-/* ---------- ä¾§è¾¹æ é¢æ¿ ---------- */
+/* ---------- ²à±ßÀ¸Ãæ°å ---------- */
 .panel {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -1056,7 +1056,7 @@ html, body {
 }
 
 
-/* ---------- æŒ‰é’® ---------- */
+/* ---------- °´Å¥ ---------- */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -1154,7 +1154,7 @@ html, body {
     flex: 1;
 }
 
-/* Plan æŒ‰é’®é«˜äº® */
+/* Plan °´Å¥¸ßÁÁ */
 .plan-btn.active {
     border: 2px solid var(--accent-primary);
     box-shadow: 0 0 8px rgba(37, 99, 235, 0.3);
@@ -1190,7 +1190,7 @@ html, body {
     color: #1a1a2e;
 }
 
-/* ---------- Composer é¢æ¿ ---------- */
+/* ---------- Composer Ãæ°å ---------- */
 .composer-panel {
     display: flex;
     flex-direction: column;
@@ -1227,7 +1227,7 @@ html, body {
 }
 
 /* ============================================================
-   Python ç¯å¢ƒç®¡ç†ï¼ˆv10.3.0 å…¨æ–°è®¾è®¡ï¼‰
+   Python »·¾³¹ÜÀí£¨v1.0.0 È«ĞÂÉè¼Æ£©
    ============================================================ */
 
 .env-current {
@@ -1272,7 +1272,7 @@ html, body {
     letter-spacing: 0.3px;
 }
 
-/* ---------- API é…ç½®é¢æ¿ ---------- */
+/* ---------- API ÅäÖÃÃæ°å ---------- */
 .config-field {
     margin-bottom: 10px;
 }
@@ -1379,7 +1379,7 @@ html, body {
     text-align: center;
 }
 
-/* ---------- å¯æŠ˜å é¢æ¿ ---------- */
+/* ---------- ¿ÉÕÛµşÃæ°å ---------- */
 .collapsible-header {
     cursor: pointer;
     user-select: none;
@@ -1406,7 +1406,7 @@ html, body {
     padding: 0 14px !important;
 }
 
-/* ---------- è¡¨å• ---------- */
+/* ---------- ±íµ¥ ---------- */
 .form-group {
     margin-bottom: 8px;
 }
@@ -1442,7 +1442,7 @@ html, body {
     cursor: pointer;
 }
 
-/* ---------- Toast é€šçŸ¥ ---------- */
+/* ---------- Toast Í¨Öª ---------- */
 .toast-container {
     position: fixed;
     top: 60px;
@@ -1476,7 +1476,7 @@ html, body {
     to { transform: translateX(100%); opacity: 0; }
 }
 
-/* ---------- åˆ·æ–°æŒ‰é’® ---------- */
+/* ---------- Ë¢ĞÂ°´Å¥ ---------- */
 .refresh-btn {
     background: none;
     border: none;
@@ -1492,12 +1492,12 @@ html, body {
     transform: rotate(180deg);
 }
 
-/* ---------- éšè— ---------- */
+/* ---------- Òş²Ø ---------- */
 .hidden {
     display: none !important;
 }
 
-/* é—ªçƒå…‰æ ‡ â€” è¡¨ç¤ºæ­£åœ¨å®æ—¶è¾“å‡º */
+/* ÉÁË¸¹â±ê ¡ª ±íÊ¾ÕıÔÚÊµÊ±Êä³ö */
 .streaming-cursor {
     display: inline-block;
     font-size: 14px;
@@ -1519,10 +1519,10 @@ html, body {
 }
 
 /* ============================================================
-   v10.1.0: å·¥å…·è°ƒç”¨ã€æ€è€ƒè¿‡ç¨‹ä¸ Plan æç¤ºæ ·å¼
+   v1.0.0: ¹¤¾ßµ÷ÓÃ¡¢Ë¼¿¼¹ı³ÌÓë Plan ÌáÊ¾ÑùÊ½
    ============================================================ */
 
-/* å·¥å…·è°ƒç”¨å—ï¼šè“è‰²è°ƒï¼Œå·¦ä¾§è¾¹æ¡† */
+/* ¹¤¾ßµ÷ÓÃ¿é£ºÀ¶É«µ÷£¬×ó²à±ß¿ò */
 .toolcall-block {
     display: block;
     background: rgba(37, 99, 235, 0.08);
@@ -1540,7 +1540,7 @@ html, body {
     background: rgba(59, 130, 246, 0.12);
 }
 
-/* æ€è€ƒè¿‡ç¨‹å—ï¼šç´«è‰²è°ƒï¼Œå·¦ä¾§è¾¹æ¡† + æ–œä½“ */
+/* Ë¼¿¼¹ı³Ì¿é£º×ÏÉ«µ÷£¬×ó²à±ß¿ò + Ğ±Ìå */
 .reasoning-block {
     display: block;
     background: rgba(139, 92, 246, 0.08);
@@ -1557,7 +1557,7 @@ html, body {
     background: rgba(129, 140, 248, 0.1);
 }
 
-/* Plan æç¤ºå—ï¼šç¥ç€è‰²ï¼Œè™šçº¿è¾¹æ¡† */
+/* Plan ÌáÊ¾¿é£ºçúçêÉ«£¬ĞéÏß±ß¿ò */
 .plan-prompt {
     display: block;
     background: rgba(245, 158, 11, 0.1);
@@ -1570,7 +1570,7 @@ html, body {
     font-weight: 500;
 }
 
-/* ---------- å“åº”å¼ ---------- */
+/* ---------- ÏìÓ¦Ê½ ---------- */
 @media (max-width: 1200px) {
     .right-sidebar {
         width: 280px;
