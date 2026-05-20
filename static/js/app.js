@@ -302,6 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const modeName = data.mode || '🧠 智能处理模式';
             state.currentMode = modeName;
             
+            // 更新 Composer 计数
+            if (data.micro_count != null) {
+                el.microCount.textContent = data.micro_count;
+                el.autoCount.textContent = data.auto_count;
+                el.manualCount.textContent = data.manual_count;
+            }
             if (data.notification) {
                 el.composerNotification.textContent = `🔔 ${data.notification}`;
                 el.composerNotification.style.display = 'block';
@@ -350,6 +356,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('tokenBarText').textContent = pct + '%';
             }
             
+            // 更新 Composer 计数（不受 isStreaming 限制）
+            if (data.micro_count != null) {
+                el.microCount.textContent = data.micro_count;
+                el.autoCount.textContent = data.auto_count;
+                el.manualCount.textContent = data.manual_count;
+            }
+            // 更新通知
+            if (data.notification) {
+                el.composerNotification.textContent = "🔔 " + data.notification;
+                el.composerNotification.style.display = "block";
+            } else if (data.notification === "") {
+                el.composerNotification.style.display = "none";
+            }
+
             if (state.isStreaming) return;
             
         } catch (error) {
@@ -748,6 +768,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const msg = data.message || '';
             const hasToken = msg.indexOf('Token') >= 0 || msg.indexOf('token') >= 0;
             showToast(hasToken ? msg : '\ud83d\udedc\ufe0f ' + msg, 'success');
+            // 立即更新 composer 计数（manual +1）
+            if (data.micro_count != null) {
+                el.microCount.textContent = data.micro_count;
+                el.autoCount.textContent = data.auto_count;
+                el.manualCount.textContent = data.manual_count;
+            }
+            if (data.notification) {
+                el.composerNotification.textContent = "🔔 " + data.notification;
+                el.composerNotification.style.display = "block";
+            }
             await updateFullStatus();
         } catch (error) {
             showToast('\u538b\u7f29\u5931\u8d25: ' + error.message, 'error');

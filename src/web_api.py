@@ -120,6 +120,9 @@ def _build_status_snapshot(session_id: str = None):
             "usage_pct": round(usage_pct, 1),
             "notification": notification,
             "composer_info": composer_info,
+            "micro_count": getattr(session, 'micro_composer_count', 0),
+            "auto_count": getattr(session, 'auto_composer_count', 0),
+            "manual_count": getattr(session, 'manual_composer_count', 0),
             "session_title": session_title,
             "version": __version__,
             "is_streaming": is_streaming,
@@ -589,17 +592,35 @@ async def switch_to_plan():
 
 @app.post("/api/context/compact")
 async def compact_context():
-    """手动压缩上下文（/compact）"""
+    """手动压缩上下文（/compact）
+
+    使用 loop.run_in_executor 避免阻塞 asyncio 事件循环，
+    因为 session.compact_context() 内部会调用同步的 LLM API 请求，
+    可能耗时 15~60 秒。
+    """
     session, lock = _get_session_and_lock()
-    acquired = lock.acquire(timeout=1.0)
-    if acquired:
-        try:
-            stats = session.compact_context()
-            result = stats
-        finally:
-            lock.release()
-    else:
-        result = "⏳ 当前有流式请求正在处理，请稍后再试。"
+    loop = asyncio.get_event_loop()
+
+    def _do_compact():
+        """在线程池中执行阻塞操作"""
+        acquired = lock.acquire(timeout=30.0)
+        if acquired:
+            try:
+                stats = session.compact_context()
+                return stats
+            finally:
+                lock.release()
+        else:
+            return "⏳ 当前有流式请求正在处理（等待超时 30 秒），请稍后再试。"
+
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, _do_compact),
+            timeout=180.0  # 3 分钟超时
+        )
+    except asyncio.TimeoutError:
+        result = "⏰ 压缩请求超时（超过 180 秒），请重试。"
+
     _update_status_cache()
     return {"message": result, "status": "success"}
 
@@ -713,6 +734,9 @@ async def get_realtime_status():
         "usage_percent": usage_pct,
         "notification": notification,
         "is_streaming": is_streaming,
+        "micro_count": data.get("micro_count", 0),
+        "auto_count": data.get("auto_count", 0),
+        "manual_count": data.get("manual_count", 0),
     }
 
 

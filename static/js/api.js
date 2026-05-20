@@ -242,7 +242,31 @@ const API = {
      * 手动压缩上下文
      */
     async compactContext() {
-        return this._request('POST', '/api/context/compact');
+        // 添加请求超时控制（180秒超时）
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 180000);
+        try {
+            const response = await fetch(this.BASE + '/api/context/compact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('压缩请求超时，请重试');
+            }
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                throw new Error('网络连接失败，请检查服务器是否运行');
+            }
+            throw error;
+        }
     },
 
     /**
