@@ -14,7 +14,7 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 
 | 日期 | 版本 | 亮点 |
 |------|------|------|
-| 🆕 2026-05 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE流式)、19个工具、三重 Composer 上下文压缩、多会话管理、Smart/Plan 双模式 |
+| 🆕 2026-05-20 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE流式)、19个工具、三重 Composer 上下文压缩、多会话管理、Smart/Plan 双模式 |
 
 ---
 
