@@ -1,5 +1,6 @@
-# 🤖 多 Agent 协同架构设计文档 — 主子 Agent 模式
+﻿# 🤖 多 Agent 协同架构设计文档 — 主子 Agent 模式
 
+> **语言**: 中文 | [🌏 English](MULTI_AGENT_ARCHITECTURE_DESIGN.en.md)
 > **项目**: TennineClaw  
 > **版本**: v1.1.0（规划）  
 > **设计目标**: 构建主子 Agent 协同架构，实现任务智能分配、并行拆分、结果汇总、异常容错  

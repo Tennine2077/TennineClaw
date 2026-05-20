@@ -1,5 +1,6 @@
-# 🎯 Skill 技能系统引入 & 人格化持久性 — 设计文档
+﻿# 🎯 Skill 技能系统引入 & 人格化持久性 — 设计文档
 
+> **语言**: 中文 | [🌏 English](SKILL_PERSONALITY_DESIGN.en.md)
 > **项目**: TennineClaw  
 > **版本**: v1.0.0 → v1.1.0（规划）  
 > **设计目标**: 为 AI Agent 赋予可成长、可组合的 Skill 技能体系，以及跨会话保持一致的人格化记忆与行为特征  

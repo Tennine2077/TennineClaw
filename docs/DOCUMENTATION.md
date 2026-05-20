@@ -1,6 +1,7 @@
-# TennineClaw 项目说明文档
+﻿# TennineClaw 项目说明文档
 
-> **版本**: 1.0.0  
+> **版本**: 1.0.0
+> **语言**: 中文 | [🌏 English](DOCUMENTATION.en.md)  
 > **描述**: 智能终端助手 — 基于 AI 的代码分析与任务执行 Web 平台  
 > **许可**: MIT License  
 > **项目路径**: `D:\Code\tools\Claude_code_learn\TennineClaw`

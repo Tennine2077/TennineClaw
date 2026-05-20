@@ -1,6 +1,8 @@
-# TennineClaw 函数参考
+﻿# TennineClaw 函数参考
 
 > 版本：1.0.0 | 自动生成于 2026年5月19日
+
+[🌏 English](API_REFERENCE.en.md) | [🇨🇳 中文](API_REFERENCE.md)
 
 ---
 
