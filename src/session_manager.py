@@ -30,7 +30,7 @@ def _estimate_msgs_tokens(msgs: list) -> int:
 
 def ensure_session_dir(save_dir: str = None) -> str:
     """确保会话保存目录存在，返回目录路径"""
-    from config import SESSION_SAVE_DIR
+    from .config import SESSION_SAVE_DIR
     session_dir = save_dir or SESSION_SAVE_DIR
     os.makedirs(session_dir, exist_ok=True)
     return session_dir
@@ -41,7 +41,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
     
     保存内容：msgs、mode、composer 统计、token 信息、会话标题
     """
-    from config import SESSION_SAVE_DIR
+    from .config import SESSION_SAVE_DIR
     
     session_dir = ensure_session_dir(save_dir or SESSION_SAVE_DIR)
     
@@ -162,7 +162,7 @@ def restore_session(session, path: str) -> str:
         session.optimized_prompts = {int(k): v for k, v in session.optimized_prompts.items()}
     
     # 重新构建 system prompt（基于当前模式）
-    from prompts import build_system_prompt
+    from .prompts import build_system_prompt
     session.system_prompt = build_system_prompt(session.get_mode())
     
     # 确保 system prompt 正确
@@ -177,7 +177,7 @@ def restore_session(session, path: str) -> str:
 
 def list_sessions(save_dir: str = None) -> List[Dict[str, Any]]:
     """列出所有已保存的会话，返回包含标题、时间、消息数的列表"""
-    from config import SESSION_SAVE_DIR
+    from .config import SESSION_SAVE_DIR
     
     session_dir = ensure_session_dir(save_dir or SESSION_SAVE_DIR)
     sessions = []
@@ -232,7 +232,7 @@ def auto_save(session, session_save_path: str = None, save_dir: str = None) -> s
     Returns:
         保存的文件路径，失败返回空字符串
     """
-    from config import SESSION_SAVE_DIR
+    from .config import SESSION_SAVE_DIR
     
     session_dir = ensure_session_dir(save_dir or SESSION_SAVE_DIR)
     
@@ -304,7 +304,7 @@ class SessionRegistry:
 
     def create(self, session_id: Optional[str] = None) -> Any:
         """创建新会话，返回 session_id"""
-        from main import AgentSession
+        from .main import AgentSession
         sid = session_id or str(uuid.uuid4())
         session = AgentSession(session_id=sid)
         self._sessions[sid] = session
@@ -323,7 +323,7 @@ class SessionRegistry:
         """获取或创建会话，返回 (session_id, session, lock)"""
         sid = session_id or str(uuid.uuid4())
         if sid not in self._sessions:
-            from main import AgentSession
+            from .main import AgentSession
             self._sessions[sid] = AgentSession(session_id=sid)
             self._locks[sid] = threading.Lock()
         return sid, self._sessions[sid], self._locks[sid]
@@ -346,8 +346,8 @@ class SessionRegistry:
 
     def load_from_path(self, filepath: str) -> Optional[str]:
         """从文件加载会话到注册表，返回 session_id"""
-        from main import AgentSession
-        from config import SESSION_SAVE_DIR
+        from .main import AgentSession
+        from .config import SESSION_SAVE_DIR
         data = load_session(filepath)
         sid = str(uuid.uuid4())
         session = AgentSession(session_id=sid)

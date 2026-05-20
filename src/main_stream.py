@@ -9,16 +9,16 @@ import os
 import json
 import re
 
-from config import (
+from .config import (
     API_MODEL,
     MAX_CTX_TOKENS,
     MODE_SMART, MODE_PLAN,
     SESSION_SAVE_DIR,
 )
-from context import micro_composer, auto_composer, manual_composer
-from token_utils import get_token_stats_text
-from tools import TOOLS, TOOL_FUNCS
-from prompt_optimizer import optimize_prompt, format_optimized_prompt
+from .context import micro_composer, auto_composer, manual_composer
+from .token_utils import get_token_stats_text
+from .tools import TOOLS, TOOL_FUNCS
+from .prompt_optimizer import optimize_prompt, format_optimized_prompt
 
 
 # ============================================================
@@ -242,7 +242,7 @@ class AgentSessionStreamMixin:
             load_name = parts[1]
             load_path = load_name
             if not os.path.isabs(load_path):
-                from config import SESSION_SAVE_DIR
+                from .config import SESSION_SAVE_DIR
                 load_path = os.path.join(SESSION_SAVE_DIR, load_name)
                 if not os.path.exists(load_path):
                     from session_manager import list_sessions

@@ -7,7 +7,7 @@
 #   3️⃣ Manual Composer — 用户手动触发语义压缩
 # ============================================================
 
-from config import (
+from .config import (
     COMPOSER_ENABLED,
     MICRO_COMPOSER_KEEP_ROUNDS,
     COMPRESS_MAX_CHARS,

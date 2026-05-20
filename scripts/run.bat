@@ -6,7 +6,7 @@ echo   Version: 1.0.0
 echo ============================================================
 echo.
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 if exist ".env" (
     echo [CONFIG] Loading non-API environment variables...

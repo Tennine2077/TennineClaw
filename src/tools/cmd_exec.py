@@ -7,7 +7,7 @@
 import subprocess
 import platform
 
-from safety import check_command_safety
+from ..safety import check_command_safety
 
 
 def tool_run_cmd(cmd: str = "") -> str:

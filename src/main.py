@@ -10,7 +10,7 @@ import os
 import json
 from openai import OpenAI
 
-from config import (
+from .config import (
     API_KEY, API_BASE_URL, API_MODEL,
     MAX_CTX_TOKENS, COMPACT_THRESHOLD,
     MODE_SMART, MODE_PLAN,
@@ -19,13 +19,13 @@ from config import (
     SESSION_SAVE_DIR, SESSION_AUTO_SAVE, SESSION_TITLE_MAX_LEN,
     DEFAULT_PYTHON_PATH, DEFAULT_CONDA_ENV, PYTHON_ENV_MANUAL_OVERRIDE,
 )
-from context import micro_composer, auto_composer, manual_composer
-from token_utils import get_token_stats_text
-from prompts import build_system_prompt
-from tools import TOOLS, TOOL_FUNCS
-from prompt_optimizer import optimize_prompt, format_optimized_prompt
-from mode_manager import ModeManager
-from main_stream import AgentSessionStreamMixin
+from .context import micro_composer, auto_composer, manual_composer
+from .token_utils import get_token_stats_text
+from .prompts import build_system_prompt
+from .tools import TOOLS, TOOL_FUNCS
+from .prompt_optimizer import optimize_prompt, format_optimized_prompt
+from .mode_manager import ModeManager
+from .main_stream import AgentSessionStreamMixin
 
 
 # ============================================================
@@ -42,7 +42,7 @@ class AgentSession(AgentSessionStreamMixin):
         self.current_model = API_MODEL
         self.custom_models = []
         # 检查 user_config 中当前模型的 API 覆盖（用户通过 Web UI 配置的）
-        from config import get_model_api_overrides
+        from .config import get_model_api_overrides
         _overrides = get_model_api_overrides().get(self.current_model, {})
         _api_key = _overrides.get("api_key") or API_KEY
         _base_url = _overrides.get("base_url") or API_BASE_URL
@@ -212,7 +212,7 @@ class AgentSession(AgentSessionStreamMixin):
 
     def save(self, path: str = None) -> str:
         """保存当前会话到文件"""
-        from session_manager import save_session
+        from .session_manager import save_session
         try:
             save_path = save_session(self, path=path)
             title_info = f"「{self.session_title}」" if self.session_title else ""
@@ -222,7 +222,7 @@ class AgentSession(AgentSessionStreamMixin):
 
     def load(self, path: str) -> str:
         """从文件恢复会话"""
-        from session_manager import restore_session
+        from .session_manager import restore_session
         try:
             result = restore_session(self, path)
             # 设置自动保存路径为原文件，后续消息直接覆盖更新
@@ -238,7 +238,7 @@ class AgentSession(AgentSessionStreamMixin):
     def _auto_save_if_needed(self):
         """每轮对话后自动保存为独立的会话文件"""
         if SESSION_AUTO_SAVE:
-            from session_manager import auto_save
+            from .session_manager import auto_save
             path = auto_save(self, session_save_path=self._session_save_path)
             if path:
                 self._session_save_path = path
@@ -304,7 +304,7 @@ class AgentSession(AgentSessionStreamMixin):
 
     def get_available_models(self) -> list:
         """获取可用模型列表（内置 + 自定义，合并每模型 API 覆盖），返回 [{name, code, base_url, api_key, is_custom}]"""
-        from config import AVAILABLE_MODELS, apply_model_api_overrides
+        from .config import AVAILABLE_MODELS, apply_model_api_overrides
         builtin = [dict(m) for m in AVAILABLE_MODELS]
         for m in builtin:
             m["is_custom"] = False
@@ -333,7 +333,7 @@ class AgentSession(AgentSessionStreamMixin):
         
         # 如果该模型有自定义 base_url 或 api_key，重新初始化客户端
         if model_obj.get("base_url") or model_obj.get("api_key"):
-            from config import API_KEY, API_BASE_URL
+            from .config import API_KEY, API_BASE_URL
             from openai import OpenAI
             base_url = model_obj.get("base_url") or API_BASE_URL
             api_key = model_obj.get("api_key") or API_KEY
@@ -372,7 +372,7 @@ class AgentSession(AgentSessionStreamMixin):
             self.custom_models.remove(code)
         # 如果当前正在使用该模型，切回默认模型
         if self.current_model == code:
-            from config import AVAILABLE_MODELS
+            from .config import AVAILABLE_MODELS
             if AVAILABLE_MODELS:
                 default_code = AVAILABLE_MODELS[0]["code"]
                 self.current_model = default_code
@@ -381,7 +381,7 @@ class AgentSession(AgentSessionStreamMixin):
 
     def update_model_api(self, code: str, base_url: str = "", api_key: str = ""):
         """更新指定模型的 API 覆盖配置（base_url / api_key），持久化到 user_config.json"""
-        import config as cfg
+        from . import config as cfg
         # 如果是自定义模型，直接更新 custom_model_configs
         if code in self.custom_model_configs:
             self.custom_model_configs[code]["base_url"] = base_url.strip() if base_url.strip() else None
@@ -397,7 +397,7 @@ class AgentSession(AgentSessionStreamMixin):
     def reinit_client_with_overrides(self, base_url: str = "", api_key: str = ""):
         """用指定的 base_url/api_key 重新初始化客户端"""
         from openai import OpenAI
-        from config import API_KEY, API_BASE_URL
+        from .config import API_KEY, API_BASE_URL
         effective_url = base_url.strip() or API_BASE_URL
         effective_key = api_key.strip() or API_KEY
         self.client = OpenAI(
@@ -409,7 +409,7 @@ class AgentSession(AgentSessionStreamMixin):
     def reinit_client(self):
         """重新初始化 OpenAI 客户端（API Key / Base URL 变更后调用）"""
         from openai import OpenAI
-        from config import API_KEY, API_BASE_URL
+        from .config import API_KEY, API_BASE_URL
         self.client = OpenAI(
             api_key=API_KEY,
             base_url=API_BASE_URL,
@@ -493,7 +493,7 @@ class AgentSession(AgentSessionStreamMixin):
             self.conda_env = env_name
 
             # 持久化保存 conda_env 配置
-            from config import _save_user_config
+            from .config import _save_user_config
             _save_user_config({"conda_env": env_name})
 
             # 获取对应环境的 Python 路径
@@ -642,17 +642,17 @@ class AgentSession(AgentSessionStreamMixin):
             parts = user_input.split(maxsplit=1)
             if len(parts) < 2:
                 # 列出所有会话让用户选择
-                from session_manager import get_session_display_list
+                from .session_manager import get_session_display_list
                 return get_session_display_list() + "\n\n💡 使用 `/load <文件名>` 加载指定会话"
             load_name = parts[1]
             load_path = load_name
             # 如果路径不是绝对路径，尝试在会话目录中查找
             if not os.path.isabs(load_path):
-                from config import SESSION_SAVE_DIR
+                from .config import SESSION_SAVE_DIR
                 load_path = os.path.join(SESSION_SAVE_DIR, load_name)
                 if not os.path.exists(load_path):
                     # 尝试查找匹配的文件
-                    from session_manager import list_sessions
+                    from .session_manager import list_sessions
                     sessions = list_sessions()
                     matches = [s for s in sessions if load_name in s["filename"]]
                     if matches:
@@ -662,7 +662,7 @@ class AgentSession(AgentSessionStreamMixin):
             return self.load(load_path)
 
         if cmd == "/sessions":
-            from session_manager import get_session_display_list
+            from .session_manager import get_session_display_list
             return get_session_display_list()
 
         if cmd.startswith("/env"):
@@ -750,7 +750,7 @@ class AgentSession(AgentSessionStreamMixin):
 
                 # 回传 thinking 内容（工具调用时显示 reasoning）
                 if hasattr(msg, "reasoning_content") and msg.reasoning_content:
-                    from main_stream import _get_reasoning_summary
+                    from .main_stream import _get_reasoning_summary
                     reasoning_summary = _get_reasoning_summary(msg.reasoning_content)
                     final_content += f"💭 *推理摘要*: {reasoning_summary}\n\n---\n\n"
 
@@ -784,7 +784,7 @@ class AgentSession(AgentSessionStreamMixin):
                 if content:
                     # 简洁显示推理摘要
                     if has_reasoning:
-                        from main_stream import _get_reasoning_summary
+                        from .main_stream import _get_reasoning_summary
                         reasoning_summary = _get_reasoning_summary(msg.reasoning_content)
                         final_content += f"💭 *推理摘要*: {reasoning_summary}\n\n---\n\n"
 

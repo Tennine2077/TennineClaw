@@ -7,7 +7,7 @@
 
 import platform
 import datetime
-from config import MODE_NAMES, MODE_SMART, MODE_PLAN
+from .config import MODE_NAMES, MODE_SMART, MODE_PLAN
 
 
 def build_system_prompt(mode: int = MODE_SMART) -> str:

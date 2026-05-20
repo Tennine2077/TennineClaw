@@ -5,7 +5,7 @@ echo   TennineClaw v1.0.0 - Intelligent Terminal Assistant
 echo ============================================================
 echo.
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo ============================================================
 echo  NOTE: API config is now managed via Web UI.

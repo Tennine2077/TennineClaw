@@ -9,7 +9,7 @@
 
 import os
 import datetime
-from config import MODE_SMART, MODE_PLAN, MODE_NAMES, PLAN_FILE
+from .config import MODE_SMART, MODE_PLAN, MODE_NAMES, PLAN_FILE
 
 
 class ModeManager:

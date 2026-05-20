@@ -18,7 +18,7 @@ load_dotenv()
 # 确保重启后配置不丢失。
 # ============================================================
 
-USER_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "user_config.json")
+USER_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "user_config.json")
 
 def _load_user_config() -> dict:
     """从 user_config.json 加载用户持久化配置"""

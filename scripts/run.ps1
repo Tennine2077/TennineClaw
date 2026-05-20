@@ -6,8 +6,8 @@ Write-Host "  TennineClaw - Intelligent Terminal Assistant"
 Write-Host "="*60
 Write-Host ""
 
-# Switch to project root
-Set-Location $PSScriptRoot
+# Switch to project root (parent of scripts/)
+Set-Location (Join-Path $PSScriptRoot "..")
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  NOTE: API config is now managed via Web UI." -ForegroundColor Cyan

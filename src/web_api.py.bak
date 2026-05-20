@@ -31,16 +31,16 @@ for p in [project_dir, parent_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from main import AgentSession, MODE_SMART, MODE_PLAN
-from config import (
+from .main import AgentSession, MODE_SMART, MODE_PLAN
+from .config import (
     GRADIO_TITLE, GRADIO_DESCRIPTION, GRADIO_PORT, GRADIO_SHARE,
     MAX_CTX_TOKENS, COMPOSER_ENABLED, SESSION_SAVE_DIR,
     PYTHON_ENV_MANUAL_OVERRIDE,
     _save_user_config, _invalidate_config_cache,
 )
-from __init__ import __version__
+from . import __version__
 
-from session_manager import SessionRegistry
+from .session_manager import SessionRegistry
 
 # ============================================================
 # 多会话注册表
@@ -225,7 +225,7 @@ app.add_middleware(
 )
 
 # 挂载静态文件
-static_dir = os.path.join(project_dir, "static")
+static_dir = os.path.join(parent_dir, "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
@@ -501,7 +501,7 @@ async def create_session():
 @app.get("/api/sessions/list")
 async def list_all_sessions():
     """列出已保存会话文件列表"""
-    from session_manager import list_sessions
+    from .session_manager import list_sessions
     saved_files = list_sessions()
 
     # 收集活跃会话
@@ -719,7 +719,7 @@ async def get_realtime_status():
             f"📊合计: {total_tk:,} ({usage_pct:.1f}%)"
         )
     else:
-        from config import MAX_CTX_TOKENS as max_ctx
+        from .config import MAX_CTX_TOKENS as max_ctx
         input_pct = (tokens / max_ctx) * 100 if max_ctx > 0 else 0
         status = (
             f"**模式**: {mode_name} | "
@@ -955,7 +955,7 @@ async def load_session_api(req: LoadRequest):
     """加载指定会话到注册表，如果已有活跃 session 在跟踪该文件则复用"""
     if not req.path:
         raise HTTPException(status_code=400, detail="会话路径不能为空")
-    from session_manager import restore_session
+    from .session_manager import restore_session
 
     # 检查是否有 registry session 已在跟踪此路径
     existing_sid = None
@@ -996,7 +996,7 @@ async def delete_session_api(req: DeleteRequest):
     """删除指定会话"""
     if not req.path:
         raise HTTPException(status_code=400, detail="会话路径不能为空")
-    from session_manager import delete_session
+    from .session_manager import delete_session
     try:
         result = delete_session(req.path)
         return {"message": result}

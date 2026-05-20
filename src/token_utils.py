@@ -5,7 +5,7 @@
 # Token 数据直接从 API 返回的 usage 字段获取。
 # ============================================================
 
-from config import MAX_CTX_TOKENS
+from .config import MAX_CTX_TOKENS
 
 
 def show_token_usage(usage=None, prompt_tokens: int = None, completion_tokens: int = None, label="本次"):
