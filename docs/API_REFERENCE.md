@@ -108,7 +108,7 @@ FastAPI Web 服务。37 条 REST API 路由，处理前端请求。
 | `/api/session/clear` | POST | 清除上下文 |
 | `/api/session/compact` | POST | 压缩上下文 |
 | `/api/help` | GET | 获取帮助文本 |
-| `/api/status` | GET | 获取完整状态（Token 面板数据） |
+| `/api/status` | GET | 获取完整状态（模式、消息数、Token 总计、占用率等） |
 | `/api/status/realtime` | GET | 实时状态（简洁版） |
 | `/api/session/title` | GET | 获取会话标题 |
 | `/api/session/save` | POST | 保存会话 |
@@ -225,7 +225,7 @@ Token 统计与格式化。
 
 | 函数 | 说明 |
 |------|------|
-| `show_token_usage(usage)` | 显示 Token 消耗信息 |
+| `show_token_usage(usage)` | 显示 Token 消耗信息（用于调试日志） |
 | `get_token_stats_text(usage)` | 获取格式化 Token 统计文本 |
 
 ---
@@ -325,7 +325,7 @@ Git 集成。
 | `renderMessages(messages)` | 渲染消息列表 |
 | `renderSessionList()` | 渲染侧栏会话列表 |
 | `updateFullStatus()` | 更新右侧面板状态 |
-| `updateTokenStatus(input, output, total, max)` | 更新 Token 面板 |
+| `updateTokenStatus(total, max)` | 更新 Token 面板 |
 | `showToast(text, type)` | 显示 Toast 通知 |
 | `startSmartPolling()` | 启动智能轮询 |
 
@@ -363,9 +363,6 @@ API 调用封装。
 | `msgs` | list | 消息列表（含 system prompt） |
 | `current_mode` | int | 当前模式（Smart / Plan） |
 | `current_model` | str | 当前模型 code |
-| `current_tokens` | int | 当前输入 Token 数 |
-| `completion_tokens` | int | 累计输出 Token 数 |
-| `session_completion_tokens` | int | 会话级输出 Token 累计 |
 | `total_tokens` | int | 总 Token 数 |
 | `session_title` | str | 会话标题 |
 | `python_env` | str | Python 路径 |
@@ -377,10 +374,6 @@ API 调用封装。
 |------|------|------|
 | `mode` | str | 当前模式名称 |
 | `message_count` | int | 消息数 |
-| `current_tokens` | int | 输入 Token |
-| `completion_tokens` | int | 累计输出 Token |
-| `total_tokens` | int | 总 Token |
-| `session_completion_tokens` | int | 会话级输出 Token |
 | `usage_percent` | float | 上下文占用率 |
 | `session_title` | str | 会话标题 |
 | `composer_info` | str | Composer 统计文本 |
@@ -395,12 +388,9 @@ API 调用封装。
 | `timestamp` | 保存时间戳 |
 | `session_title` | 会话标题 |
 | `mode` / `mode_name` | 会话模式 |
-| `msgs` | 消息列表 |
-| `current_tokens` | 保存时的输入 Token |
-| `completion_tokens` | 累计输出 Token |
-| `session_completion_tokens` | 会话输出 Token 累计 |
+| `msgs` | 消息列表（保存时使用展示层完整版本） |
 | `total_tokens` | 总 Token |
-| `last_token_stats` | Token 统计文本 |
+| `last_token_stats` | Token 统计文本（内部缓存） |
 | `message_count` | 消息数 |
 
 ---

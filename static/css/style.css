@@ -1,10 +1,10 @@
 /* ============================================================
-   TennineClaw - ÏÖ´ú»¯ UI ÑùÊ½
-   Ö§³ÖÉîÉ«/Ç³É«Ë«Ö÷Ìâ + ÏìÓ¦Ê½Éè¼Æ
-   v1.0.0 - ÐÂÔöÁ÷Ê½äÖÈ¾¹â±ê¶¯»­ + ¹¤¾ßµ÷ÓÃ/Ë¼¿¼¹ý³ÌÑùÊ½
+   TennineClaw - ï¿½Ö´ï¿½ï¿½ï¿½ UI ï¿½ï¿½Ê½
+   Ö§ï¿½ï¿½ï¿½ï¿½É«/Ç³É«Ë«ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½Ó¦Ê½ï¿½ï¿½ï¿½
+   v1.0.0 - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½È¾ï¿½ï¿½ê¶¯ï¿½ï¿½ + ï¿½ï¿½ï¿½ßµï¿½ï¿½ï¿½/Ë¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½
    ============================================================ */
 
-/* ---------- CSS ±äÁ¿£¨Ö÷Ìâ¶¨Òå£© ---------- */
+/* ---------- CSS ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â¶¨ï¿½å£© ---------- */
 :root,
 [data-theme="light"] {
     --bg-primary: #f5f7fa;
@@ -71,7 +71,7 @@
     --toast-text: #f9fafb;
 }
 
-/* ---------- È«¾ÖÖØÖÃ ---------- */
+/* ---------- È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -102,7 +102,7 @@ html, body {
     background: var(--text-muted);
 }
 
-/* ---------- ¶¥²¿µ¼º½ ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .header {
     position: fixed;
     top: 0;
@@ -209,7 +209,7 @@ html, body {
     font-weight: 500;
 }
 
-/* ---------- Ö÷²¼¾Ö ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .main-layout {
     display: flex;
     height: calc(100vh - var(--header-height));
@@ -217,7 +217,7 @@ html, body {
     overflow: hidden;
 }
 
-/* ---------- ×ó²à»á»°À¸£¨ChatGPT ·ç¸ñ£© ---------- */
+/* ---------- ï¿½ï¿½ï¿½á»°ï¿½ï¿½ï¿½ï¿½ChatGPT ï¿½ï¿½ï¿½ ---------- */
 .left-sidebar {
     width: 280px;
     min-width: 280px;
@@ -233,7 +233,7 @@ html, body {
     margin-left: -280px;
 }
 
-/* ÐÂ¿ª»á»°°´Å¥ */
+/* ï¿½Â¿ï¿½ï¿½á»°ï¿½ï¿½Å¥ */
 .new-chat-wrapper {
     padding: 12px;
     flex-shrink: 0;
@@ -265,7 +265,7 @@ html, body {
     font-size: 16px;
 }
 
-/* »á»°ËÑË÷ */
+/* ï¿½á»°ï¿½ï¿½ï¿½ï¿½ */
 .session-search-wrapper {
     padding: 0 12px 8px;
     flex-shrink: 0;
@@ -290,7 +290,7 @@ html, body {
     color: var(--text-muted);
 }
 
-/* »á»°ÁÐ±í */
+/* ï¿½á»°ï¿½Ð±ï¿½ */
 .session-list {
     flex: 1;
     overflow-y: auto;
@@ -304,7 +304,7 @@ html, body {
     font-size: 13px;
 }
 
-/* »á»°Ïî */
+/* ï¿½á»°ï¿½ï¿½ */
 .session-item {
     display: flex;
     flex-direction: column;
@@ -374,7 +374,7 @@ html, body {
     background: var(--bg-primary);
 }
 
-/* ÈÕÆÚ·Ö×é±êÌâ */
+/* ï¿½ï¿½ï¿½Ú·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 .session-date-header {
     font-size: 11px;
     font-weight: 600;
@@ -384,7 +384,7 @@ html, body {
     border-bottom: 1px solid var(--border-light);
 }
 
-/* ---------- ÁÄÌìÇøÓò£¨ÖÐ¼ä£© ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ä£© ---------- */
 .chat-area {
     flex: 1;
     display: flex;
@@ -393,7 +393,7 @@ html, body {
     position: relative;
 }
 
-/* ---------- ÓÒ²à¿ØÖÆÃæ°å ---------- */
+/* ---------- ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .right-sidebar {
     width: var(--sidebar-width);
     min-width: var(--sidebar-width);
@@ -406,7 +406,7 @@ html, body {
     gap: 10px;
 }
 
-/* ---------- »á»°±êÌâ ---------- */
+/* ---------- ï¿½á»°ï¿½ï¿½ï¿½ï¿½ ---------- */
 .session-header {
     padding: 12px 20px;
     background: var(--gradient-primary);
@@ -428,7 +428,7 @@ html, body {
     text-overflow: ellipsis;
 }
 
-/* Ä£ÐÍÇÐ»»Æ÷ */
+/* Ä£ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ */
 .header-spacer {
     flex: 1;
 }
@@ -517,7 +517,7 @@ html, body {
     border-color: rgba(255,255,255,0.5);
 }
 
-/* ---------- ÏûÏ¢ÈÝÆ÷ ---------- */
+/* ---------- ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ ---------- */
 .messages-container {
     flex: 1;
     overflow-y: auto;
@@ -576,7 +576,7 @@ html, body {
     font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
 }
 
-/* ---------- ÏûÏ¢ÆøÅÝ ---------- */
+/* ---------- ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ ---------- */
 .message {
     display: flex;
     gap: 12px;
@@ -640,7 +640,7 @@ html, body {
     border-bottom-left-radius: 4px;
 }
 
-/* ÏûÏ¢ÄÚ Markdown ÑùÊ½ */
+/* ï¿½ï¿½Ï¢ï¿½ï¿½ Markdown ï¿½ï¿½Ê½ */
 .message-content p {
     margin-bottom: 8px;
 }
@@ -689,6 +689,18 @@ html, body {
 .message-content h1 { font-size: 18px; }
 .message-content h2 { font-size: 16px; }
 .message-content h3 { font-size: 15px; }
+.message-content hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 16px 0;
+}
+.message-content a {
+    color: var(--accent-primary);
+    text-decoration: underline;
+}
+.message-content a:hover {
+    opacity: 0.8;
+}
 .message-content strong {
     font-weight: 600;
 }
@@ -726,7 +738,7 @@ html, body {
     word-break: break-all;
 }
 
-/* ©¤©¤ Ìí¼ÓÄ£ÐÍµ¯´° ©¤©¤ */
+/* ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ä£ï¿½Íµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -792,7 +804,7 @@ html, body {
     display: inline-block;
 }
 
-/* ---------- Token ÓÃÁ¿Ãæ°å ---------- */
+/* ---------- Token ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .token-panel {
     display: flex;
     flex-direction: column;
@@ -845,24 +857,14 @@ html, body {
     font-weight: 500;
 }
 
-/* Badge ÑÕÉ«À©Õ¹ */
-.badge-purple {
-    background: #e8d4f8;
-    color: #6b21a8;
-}
-
-.badge-teal {
-    background: #d4f8f0;
-    color: #0d7c5c;
-}
-
+/* Badge ï¿½ï¿½É« */
 .badge-orange {
     background: #fde8d0;
     color: #9a4a00;
 }
 
 
-/* ---------- ÊäÈëÇøÓò ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .input-area {
     padding: 12px 20px 16px;
     background: var(--bg-secondary);
@@ -871,7 +873,7 @@ html, body {
 }
 
 /* ============================================================
-   v1.0.0: »á»°±êÇ©
+   v1.0.0: ï¿½á»°ï¿½ï¿½Ç©
    ============================================================ */
 .session-tabs {
     display: flex;
@@ -939,7 +941,7 @@ html, body {
 }
 
 /* ============================================================
-   v1.0.0: ´ò¶Ï°´Å¥
+   v1.0.0: ï¿½ï¿½Ï°ï¿½Å¥
    ============================================================ */
 .interrupt-btn {
     width: 40px;
@@ -1031,7 +1033,7 @@ html, body {
     text-align: right;
 }
 
-/* ---------- ²à±ßÀ¸Ãæ°å ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .panel {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -1056,7 +1058,7 @@ html, body {
 }
 
 
-/* ---------- °´Å¥ ---------- */
+/* ---------- ï¿½ï¿½Å¥ ---------- */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -1154,7 +1156,7 @@ html, body {
     flex: 1;
 }
 
-/* Plan °´Å¥¸ßÁÁ */
+/* Plan ï¿½ï¿½Å¥ï¿½ï¿½ï¿½ï¿½ */
 .plan-btn.active {
     border: 2px solid var(--accent-primary);
     box-shadow: 0 0 8px rgba(37, 99, 235, 0.3);
@@ -1190,7 +1192,7 @@ html, body {
     color: #1a1a2e;
 }
 
-/* ---------- Composer Ãæ°å ---------- */
+/* ---------- Composer ï¿½ï¿½ï¿½ ---------- */
 .composer-panel {
     display: flex;
     flex-direction: column;
@@ -1227,7 +1229,7 @@ html, body {
 }
 
 /* ============================================================
-   Python »·¾³¹ÜÀí£¨v1.0.0 È«ÐÂÉè¼Æ£©
+   Python ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½v1.0.0 È«ï¿½ï¿½ï¿½ï¿½Æ£ï¿½
    ============================================================ */
 
 .env-current {
@@ -1272,7 +1274,7 @@ html, body {
     letter-spacing: 0.3px;
 }
 
-/* ---------- API ÅäÖÃÃæ°å ---------- */
+/* ---------- API ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
 .config-field {
     margin-bottom: 10px;
 }
@@ -1379,7 +1381,7 @@ html, body {
     text-align: center;
 }
 
-/* ---------- ¿ÉÕÛµþÃæ°å ---------- */
+/* ---------- ï¿½ï¿½ï¿½Ûµï¿½ï¿½ï¿½ï¿½ ---------- */
 .collapsible-header {
     cursor: pointer;
     user-select: none;
@@ -1406,7 +1408,7 @@ html, body {
     padding: 0 14px !important;
 }
 
-/* ---------- ±íµ¥ ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ ---------- */
 .form-group {
     margin-bottom: 8px;
 }
@@ -1476,7 +1478,7 @@ html, body {
     to { transform: translateX(100%); opacity: 0; }
 }
 
-/* ---------- Ë¢ÐÂ°´Å¥ ---------- */
+/* ---------- Ë¢ï¿½Â°ï¿½Å¥ ---------- */
 .refresh-btn {
     background: none;
     border: none;
@@ -1492,12 +1494,12 @@ html, body {
     transform: rotate(180deg);
 }
 
-/* ---------- Òþ²Ø ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ ---------- */
 .hidden {
     display: none !important;
 }
 
-/* ÉÁË¸¹â±ê ¡ª ±íÊ¾ÕýÔÚÊµÊ±Êä³ö */
+/* ï¿½ï¿½Ë¸ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ÊµÊ±ï¿½ï¿½ï¿½ */
 .streaming-cursor {
     display: inline-block;
     font-size: 14px;
@@ -1519,10 +1521,10 @@ html, body {
 }
 
 /* ============================================================
-   v1.0.0: ¹¤¾ßµ÷ÓÃ¡¢Ë¼¿¼¹ý³ÌÓë Plan ÌáÊ¾ÑùÊ½
+   v1.0.0: ï¿½ï¿½ï¿½ßµï¿½ï¿½Ã¡ï¿½Ë¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Plan ï¿½ï¿½Ê¾ï¿½ï¿½Ê½
    ============================================================ */
 
-/* ¹¤¾ßµ÷ÓÃ¿é£ºÀ¶É«µ÷£¬×ó²à±ß¿ò */
+/* ï¿½ï¿½ï¿½ßµï¿½ï¿½Ã¿é£ºï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ */
 .toolcall-block {
     display: block;
     background: rgba(37, 99, 235, 0.08);
@@ -1540,7 +1542,7 @@ html, body {
     background: rgba(59, 130, 246, 0.12);
 }
 
-/* Ë¼¿¼¹ý³Ì¿é£º×ÏÉ«µ÷£¬×ó²à±ß¿ò + Ð±Ìå */
+/* Ë¼ï¿½ï¿½ï¿½ï¿½ï¿½Ì¿é£ºï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ + Ð±ï¿½ï¿½ */
 .reasoning-block {
     display: block;
     background: rgba(139, 92, 246, 0.08);
@@ -1557,7 +1559,7 @@ html, body {
     background: rgba(129, 140, 248, 0.1);
 }
 
-/* Plan ÌáÊ¾¿é£ºçúçêÉ«£¬ÐéÏß±ß¿ò */
+/* Plan ï¿½ï¿½Ê¾ï¿½é£ºï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ß±ß¿ï¿½ */
 .plan-prompt {
     display: block;
     background: rgba(245, 158, 11, 0.1);
@@ -1570,7 +1572,7 @@ html, body {
     font-weight: 500;
 }
 
-/* ---------- ÏìÓ¦Ê½ ---------- */
+/* ---------- ï¿½ï¿½Ó¦Ê½ ---------- */
 @media (max-width: 1200px) {
     .right-sidebar {
         width: 280px;

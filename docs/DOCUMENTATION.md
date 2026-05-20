@@ -22,7 +22,7 @@
    - [3.8 `prompt_optimizer.py` — Prompt 智能优化](#38-prompt_optimizerpy--prompt-智能优化)
    - [3.9 `safety.py` — 命令安全检测](#39-safetypy--命令安全检测)
    - [3.10 `session_manager.py` — 会话持久化管理](#310-session_managerpy--会话持久化管理)
-   - [3.11 `token_utils.py` — Token 统计展示](#311-token_utilspy--token-统计展示)
+   - [3.11 `token_utils.py` — Token 统计工具](#311-token_utilspy--token-统计工具)
    - [3.12 `web_api.py` — FastAPI Web 服务层](#312-web_apipy--fastapi-web-服务层)
    - [3.13 `tools/__init__.py` — 工具注册与调度](#313-tools__init__py--工具注册与调度)
    - [3.14 `tools/cmd_exec.py` — 命令执行工具](#314-toolscmd_execpy--命令执行工具)
@@ -67,7 +67,7 @@ TennineClaw/
 ├── prompt_optimizer.py      # 用户 Prompt 智能优化
 ├── safety.py                # 命令安全检测
 ├── session_manager.py       # 会话 CRUD + SessionRegistry 注册表
-├── token_utils.py           # Token 使用量统计展示
+├── token_utils.py           # Token 使用量统计工具
 ├── web_api.py               # FastAPI 服务 + 路由 + 状态缓存
 ├── tools/                   # 工具包目录
 │   ├── __init__.py          # 工具注册表 + dispatch_tool 调度器
@@ -173,12 +173,12 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 
 | 方法 | 来源 | 功能 | 目的 |
 |------|------|------|------|
-| `__init__(self, session_id, mode)` | `main.py` | 初始化会话实例 | 创建完整的会话上下文：API 客户端、消息列表、Token 统计、Composer 统计、标题系统、环境配置、流式控制等 |
+| `__init__(self, session_id, mode)` | `main.py` | 初始化会话实例 | 创建完整的会话上下文：API 客户端、消息列表（双轨存储）、Token 计数、Composer 统计、标题系统、环境配置、流式控制等 |
 | `reset(self)` | `main.py` | 重置会话到初始状态 | 清除所有上下文、统计数据和状态，相当于重新开始一个对话 |
 | `get_mode_name()` | `main.py` | 获取当前模式名称 | 返回带 emoji 的模式显示名（如"🧠 智能模式"） |
 | `get_mode()` | `main.py` | 获取当前模式数值 | 返回 `MODE_SMART` 或 `MODE_PLAN` |
 | `get_composer_status()` | `main.py` | 获取 Composer 压缩状态文本 | 供前端或 `/status` 命令展示当前三重压缩器的触发次数和阈值信息 |
-| `switch_mode(mode)` | `main.py` | 切换工作模式 | 根据用户指令切换到 Smart 或 Plan 模式，重建 system prompt 并重置 Token 统计 |
+| `switch_mode(mode)` | `main.py` | 切换工作模式 | 根据用户指令切换到 Smart 或 Plan 模式，重建 system prompt 并重置 Token 计数 |
 | `_auto_set_title(user_input)` | `main.py` | 首次用户消息时自动生成标题 | 取用户输入的前 50 个字作为会话标题，提升会话识别度 |
 | `set_title(title)` | `main.py` | 手动设置会话标题 | 允许用户通过 `/title` 命令自定义会话名称 |
 | `get_title()` | `main.py` | 获取会话标题 | 返回当前标题或无标题占位符 |
@@ -428,18 +428,19 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 
 ---
 
-### 3.11 `token_utils.py` — Token 统计展示
+### 3.11 `token_utils.py` — Token 统计工具
 
 **来源**: 独立模块  
-**功能**: 提供 Token 使用量的统计显示功能  
-**目的**: 让用户直观了解每次对话的 Token 消耗和上下文占用百分比
+**功能**: 提供 Token 使用量的统计计算功能  
+**目的**: 用于内部计数和调试日志，不再展示在对话界面中
 
 | 函数 | 来源 | 功能 | 目的 |
 |------|------|------|------|
-| `show_token_usage(usage, prompt_tokens, completion_tokens, label)` | `token_utils.py` | 显示 Token 消耗信息 | 格式化输出输入/输出 Token、剩余上下文空间和占用百分比，支持从 API usage 对象或直接数字生成 |
-| `get_token_stats_text(usage, prompt_tokens, completion_tokens, label)` | `token_utils.py` | 获取 Token 统计文本 | 与 `show_token_usage` 类似，但返回紧凑的单行文本（用于 Gradio 界面展示） |
+| `show_token_usage(usage, prompt_tokens, completion_tokens, label)` | `token_utils.py` | 显示 Token 消耗信息 | 格式化输出输入/输出 Token、剩余上下文空间和占用百分比（调试用） |
+| `get_token_stats_text(usage, prompt_tokens, completion_tokens, label)` | `token_utils.py` | 获取 Token 统计文本 | 与 `show_token_usage` 类似，返回紧凑的单行文本 |
 
----
+> **注**：Token 统计信息不再出现在 AI 回复末尾。右侧信息面板仅显示总计 Token 数量和占用率，达到 80% 后自动触发上下文压缩。
+
 
 ### 3.12 `web_api.py` — FastAPI Web 服务层
 
@@ -480,7 +481,7 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 | `POST /api/context/compact` | compact_context | 手动压缩上下文 | 调用 `session.compact_context()`（try-lock 保护） |
 | `GET /api/context/help` | get_help | 获取帮助文本 | 调用 `session._get_help_text()` |
 | `GET /api/context/status` | get_context_status | 获取 Composer 状态文本 | 调用 `session.get_composer_status()` |
-| `GET /api/status` | get_full_status | 获取完整状态信息 | 支持缓存兜底，返回模式、消息数、Token、标题等 |
+| `GET /api/status` | get_full_status | 获取完整状态信息 | 支持缓存兜底，返回模式、消息数、Token 总计、占用率等 |
 | `GET /api/status/realtime` | get_realtime_status | 获取实时简洁状态 | 用于前端自动刷新，返回一行状态文本 |
 | `GET /api/session/title` | get_session_title | 获取会话标题 | |
 | `POST /api/session/save` | save_session_api | 保存当前会话 | |

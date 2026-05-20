@@ -118,25 +118,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderMarkdown(text) {
-        let html = escapeHtml(text);
-        
-        // 代码块 ``` ```
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-            return `<pre><code>${code}</code></pre>`;
+        // Step 1: 保护代码块和行内代码
+        const codeBlocks = [];
+        const inlineCodes = [];
+
+        let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+            const idx = codeBlocks.length;
+            codeBlocks.push({ lang, code });
+            return `%%CODEBLOCK_${idx}%%`;
         });
-        
-        // 行内代码 ``
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        // 粗体 ** **
+
+        processed = processed.replace(/`([^`]+)`/g, (_, code) => {
+            const idx = inlineCodes.length;
+            inlineCodes.push(code);
+            return `%%INLINECODE_${idx}%%`;
+        });
+
+        let html = escapeHtml(processed);
+
+        // 标题
+        html = html.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+        html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+        html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+        // 水平线
+        html = html.replace(/^---+$/gm, '<hr>');
+        html = html.replace(/^\*{3,}$/gm, '<hr>');
+        html = html.replace(/^_{3,}$/gm, '<hr>');
+
+        // 列表
+        html = html.replace(/^[\s]*[-*+]\s+(.+)$/gm, '<li>$1</li>');
+        html = html.replace(/^[\s]*\d+\.\s+(.+)$/gm, '<li>$1</li>');
+        html = html.replace(/((?:<li>.*?<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+        // 引用
+        html = html.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+        html = html.replace(/(<blockquote>.*?<\/blockquote>\n?)+/g, function(match) {
+            var contents = match.match(/<blockquote>(.*?)<\/blockquote>/g);
+            if (contents) {
+                var merged = contents.map(function(c) { return c.replace(/<\/?blockquote>/g, ''); }).join('<br>');
+                return '<blockquote>' + merged + '</blockquote>';
+            }
+            return match;
+        });
+
+        // 粗体和斜体
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        
-        // 斜体 * *
-        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        
-        // 换行
+        html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+
+        // 链接
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+        // 表格
+        html = html.replace(/^\|(.+)\|$/gm, function(match) {
+            var cells = match.slice(1, -1).split('|').map(function(c) { return c.trim(); });
+            if (cells.every(function(c) { return /^-+$/.test(c); })) return '';
+            return '<tr><td>' + cells.join('</td><td>') + '</td></tr>';
+        });
+        html = html.replace(/((?:<tr>.*?<\/tr>\n?)+)/g, '<table>\n$1\n</table>');
+
+        // 换行保护
+        var protectedTags = [];
+        html = html.replace(/<(pre|code|table|ul|ol|blockquote|h[1-6])[^>]*>[\s\S]*?<\/\1>/g, function(match) {
+            var idx = protectedTags.length;
+            protectedTags.push(match);
+            return `%%PROTECTED_${idx}%%`;
+        });
         html = html.replace(/\n/g, '<br>');
-        
+        protectedTags.forEach(function(tag, idx) {
+            html = html.replace(`%%PROTECTED_${idx}%%`, tag);
+        });
+
+        // 恢复行内代码
+        inlineCodes.forEach(function(code, idx) {
+            html = html.replace(`%%INLINECODE_${idx}%%`, '<code>' + escapeHtml(code) + '</code>');
+        });
+
+        // 恢复代码块
+        codeBlocks.forEach(function(block, idx) {
+            var escapedCode = escapeHtml(block.code);
+            var langClass = block.lang ? ' class="language-' + escapeHtml(block.lang) + '"' : '';
+            html = html.replace('%%CODEBLOCK_' + idx + '%%', '<pre><code' + langClass + '>' + escapedCode + '</code></pre>');
+        });
+
         return html;
     }
 
@@ -313,13 +380,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} totalTokens - Total token count
      * @param {number} maxTokens - Maximum token limit
      */
-    function updateTokenStatus(inputTokens, outputTokens, totalTokens, maxTokens) {
-        const elTokenInput = document.getElementById('tokenInput');
-        if (!elTokenInput) return;
-        const total = totalTokens || ((inputTokens || 0) + (outputTokens || 0));
+    function updateTokenStatus(totalTokens, maxTokens) {
+        const elTokenTotal = document.getElementById('tokenTotal');
+        if (!elTokenTotal) return;
+        const total = totalTokens || 0;
         const max = maxTokens || 128000;
-        document.getElementById('tokenInput').textContent = (inputTokens || 0).toLocaleString();
-        document.getElementById('tokenOutput').textContent = (outputTokens || 0).toLocaleString();
         document.getElementById('tokenTotal').textContent = total.toLocaleString();
         const pct = max > 0 ? Math.min((total / max) * 100, 100) : 0;
         document.getElementById('tokenBarFill').style.width = pct.toFixed(1) + '%';
@@ -334,12 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await fetchJsonWithTimeout('/api/status', 5000);
             
             // Token 用量面板始终更新（不受 isStreaming 限制）
-            const elTokenInput = document.getElementById('tokenInput');
-            if (elTokenInput && data.total_tokens != null) {
+            const elTokenTotal = document.getElementById('tokenTotal');
+            if (elTokenTotal && data.total_tokens != null) {
                 const total = data.total_tokens || 0;
-                const maxTk = total > 0 && data.usage_percent > 0 ? Math.round(total / (data.usage_percent / 100)) : 128000;
-                document.getElementById('tokenInput').textContent = (data.current_tokens || 0).toLocaleString();
-                document.getElementById('tokenOutput').textContent = (data.session_completion_tokens || 0).toLocaleString();
                 document.getElementById('tokenTotal').textContent = total.toLocaleString();
                 const pct = data.usage_percent || 0;
                 document.getElementById('tokenBarFill').style.width = pct + '%';
@@ -573,14 +635,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (data.type === 'interrupted_done') {
                             finalizeStreamingContent(contentDiv, fullContent);
                             doneReceived = true;
-                            await updateTokenStatus(data.input_tokens, data.output_tokens, data.total_tokens, data.max_tokens);
+                            await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
                             await updateSessionTitle();
                             await renderSessionList();
                         } else if (data.type === 'done') {
                             finalizeStreamingContent(contentDiv, fullContent);
                             doneReceived = true;
-                            await updateTokenStatus(data.input_tokens, data.output_tokens, data.total_tokens, data.max_tokens);
+                            await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
                             await updateSessionTitle();
                             await checkPlanMenu();

@@ -292,12 +292,12 @@ class AgentSessionStreamMixin:
                 self.original_user_inputs[len(self.msgs)] = user_input
                 self.optimized_prompts[len(self.msgs)] = optimized_prompt
                 merged_input = format_optimized_prompt(user_input, optimized_prompt)
-                self.msgs.append({"role": "user", "content": merged_input})
+                self._append_msg({"role": "user", "content": merged_input})
                 yield "__OPT__" + optimized_prompt
             else:
                 # 没有优化时，用原始输入作为标题
                 self._auto_set_title(user_input)
-                self.msgs.append({"role": "user", "content": user_input})
+                self._append_msg({"role": "user", "content": user_input})
 
             # ---- Auto Composer 检查（Token 阈值触发语义压缩） ----
             self._run_auto_composer_if_needed()
@@ -411,7 +411,7 @@ class AgentSessionStreamMixin:
                             }
                         })
                     assistant_msg["tool_calls"] = formatted_tc
-                    self.msgs.append(assistant_msg)
+                    self._append_msg(assistant_msg)
 
                     # 回传 thinking 内容（工具调用时显示 reasoning）
                     has_reasoning = bool(collected_reasoning and collected_reasoning.strip())
@@ -434,7 +434,7 @@ class AgentSessionStreamMixin:
                         if isinstance(result, str) and len(result) > 2000:
                             result = result[:2000] + "\n\n...（结果已截断）"
 
-                        self.msgs.append({
+                        self._append_msg({
                             "role": "tool",
                             "tool_call_id": tc_data["id"],
                             "content": str(result)
@@ -469,22 +469,12 @@ class AgentSessionStreamMixin:
                         assistant_msg = {"role": "assistant", "content": content}
                         if collected_reasoning:
                             assistant_msg["reasoning_content"] = collected_reasoning
-                        self.msgs.append(assistant_msg)
+                        self._append_msg(assistant_msg)
                     
-                    # 添加会话级 Token 统计
+                    # 添加会话级 Token 累计（仅内部统计，不展示）
                     if self.session_completion_tokens is None:
                         self.session_completion_tokens = 0
                     self.session_completion_tokens += round_completion_tokens
-                    
-                    # 最终 Token 统计信息
-                    if self.completion_tokens > 0 or self.session_completion_tokens > 0:
-                        token_summary = (
-                            f"\n\n---\n📊 **Token 统计**\n"
-                            f"输入 Token: {self.current_tokens:,}\n"
-                            f"输出 Token: {self.session_completion_tokens:,}\n"
-                            f"合计: {(self.current_tokens or 0) + self.session_completion_tokens:,}"
-                        )
-                        yield token_summary
                     
                     # 更新 last_token_stats
                     if self.current_tokens == 0:

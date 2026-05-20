@@ -54,6 +54,7 @@ class AgentSession(AgentSessionStreamMixin):
         self.mode_mgr = ModeManager(mode)
         self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
         self.msgs = [{"role": "system", "content": self.system_prompt}]
+        self._display_msgs = [{"role": "system", "content": self.system_prompt}]
         self.current_tokens = 0
         self.last_token_stats = ""
         self.completion_tokens = 0
@@ -101,6 +102,7 @@ class AgentSession(AgentSessionStreamMixin):
         """重置会话（清除上下文）"""
         self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
         self.msgs = [{"role": "system", "content": self.system_prompt}]
+        self._display_msgs = [{"role": "system", "content": self.system_prompt}]
         self.current_tokens = 0
         self.last_token_stats = ""
         self.completion_tokens = 0
@@ -131,6 +133,21 @@ class AgentSession(AgentSessionStreamMixin):
         self._stream_interrupted = False
         self._partial_stream_content = ""
 
+    # ============================================================
+    # 统一消息追加（双写：模型用 msgs + 展示用 _display_msgs）
+    # ============================================================
+    def _append_msg(self, msg: dict):
+        """同时追加到 self.msgs（模型用）和 self._display_msgs（展示用）
+
+        确保：
+        - 模型上下文始终与展示上下文保持同步（追加新消息时）
+        - 压缩只影响 self.msgs，不影响 self._display_msgs
+        """
+        self.msgs.append(msg)
+        self._display_msgs.append(msg)
+
+    # ============================================================
+
     def get_mode_name(self) -> str:
         return self.mode_mgr.get_mode_name()
 
@@ -160,9 +177,10 @@ class AgentSession(AgentSessionStreamMixin):
             # 特例：没有上下文（仅 system 一条）时，直接更新 msgs[0]
             if len(self.msgs) <= 1:
                 self.msgs[0] = {"role": "system", "content": self.system_prompt}
+                self._display_msgs[0] = {"role": "system", "content": self.system_prompt}
             else:
                 # 有对话历史时：追加新 system prompt，不碰 msgs[0]
-                self.msgs.append({"role": "system", "content": self.system_prompt})
+                self._append_msg({"role": "system", "content": self.system_prompt})
                 # 标记有待注入的 system prompt（下轮对话前处理）
                 self._pending_mode_switch = True
             self.current_tokens = 0
@@ -573,7 +591,7 @@ class AgentSession(AgentSessionStreamMixin):
 
         if should_inject:
             inject_text = self._build_mode_inject_text()
-            self.msgs.append({"role": "system", "content": inject_text})
+            self._append_msg({"role": "system", "content": inject_text})
             self._pending_mode_switch = False
 
     def _on_round_complete(self):
@@ -693,11 +711,11 @@ class AgentSession(AgentSessionStreamMixin):
             self.original_user_inputs[len(self.msgs)] = user_input
             self.optimized_prompts[len(self.msgs)] = optimized_prompt
             merged_input = format_optimized_prompt(user_input, optimized_prompt)
-            self.msgs.append({"role": "user", "content": merged_input})
+            self._append_msg({"role": "user", "content": merged_input})
         else:
             # 没有优化时，用原始输入作为标题
             self._auto_set_title(user_input)
-            self.msgs.append({"role": "user", "content": user_input})
+            self._append_msg({"role": "user", "content": user_input})
 
         # ---- Auto Composer 检查（Token 阈值触发语义压缩） ----
         self._run_auto_composer_if_needed()
@@ -746,7 +764,7 @@ class AgentSession(AgentSessionStreamMixin):
                         }
                     })
                 assistant_msg["tool_calls"] = formatted_tc
-                self.msgs.append(assistant_msg)
+                self._append_msg(assistant_msg)
 
                 # 回传 thinking 内容（工具调用时显示 reasoning）
                 if hasattr(msg, "reasoning_content") and msg.reasoning_content:
@@ -766,7 +784,7 @@ class AgentSession(AgentSessionStreamMixin):
                     if isinstance(result, str) and len(result) > 2000:
                         result = result[:2000] + "\n\n...（结果已截断）"
 
-                    self.msgs.append({
+                    self._append_msg({
                         "role": "tool",
                         "tool_call_id": tc.id,
                         "content": str(result)
@@ -791,7 +809,7 @@ class AgentSession(AgentSessionStreamMixin):
                     final_content += content
 
                     # 保存助手消息
-                    self.msgs.append({"role": "assistant", "content": content})
+                    self._append_msg({"role": "assistant", "content": content})
                     if has_reasoning:
                         self.msgs[-1]["reasoning_content"] = msg.reasoning_content
 
@@ -800,15 +818,7 @@ class AgentSession(AgentSessionStreamMixin):
                     self.session_completion_tokens = 0
                 self.session_completion_tokens += round_completion_tokens
 
-                # 添加 Token 统计
-                token_stats = (
-                    f"\n\n---\n"
-                    f"📊 **Token 统计**\n"
-                    f"输入 Token: {self.current_tokens:,}\n"
-                    f"输出 Token: {self.session_completion_tokens:,}\n"
-                    f"（本轮新增: {round_completion_tokens:,}）"
-                )
-                final_content += token_stats
+                # Token 统计已移除（前端不再显示）
 
                 # Plan 模式菜单提示
                 if self.mode_mgr.is_plan_ready():

@@ -63,7 +63,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         "session_title": getattr(session, "session_title", ""),
         "mode": session.get_mode(),
         "mode_name": session.get_mode_name(),
-        "msgs": session.msgs,
+        "msgs": getattr(session, '_display_msgs', session.msgs),
         "current_tokens": _tokens,
         "completion_tokens": getattr(session, "completion_tokens", 0),
         "session_completion_tokens": getattr(session, "session_completion_tokens", 0),  # 累计输出 Token
@@ -79,7 +79,7 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         # 用户原始输入记录
         "original_user_inputs": getattr(session, "original_user_inputs", {}),
         "optimized_prompts": getattr(session, "optimized_prompts", {}),
-        "message_count": len(session.msgs),
+        "message_count": len(getattr(session, '_display_msgs', session.msgs)),
     }
     
     # 确定保存路径
@@ -121,6 +121,8 @@ def restore_session(session, path: str) -> str:
     
     # 恢复核心数据
     session.msgs = data.get("msgs", [session.msgs])
+    # 恢复展示层上下文（与 msgs 同步，展示层永不压缩）
+    session._display_msgs = [dict(m) for m in session.msgs]
     
     # Token 恢复：如果保存的为 0，重新估算
     _loaded_tokens = data.get("current_tokens", 0)

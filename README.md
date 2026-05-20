@@ -144,7 +144,7 @@ python -m src.web_api
 │   ├── safety.py          命令安全检测                     │
 │   ├── prompts.py         系统提示词模板                   │
 │   ├── prompt_optimizer.py 提示词优化                     │
-│   ├── token_utils.py     Token 统计工具                  │
+│   ├── token_utils.py     Token 用量工具                  │
 │   └── mode_manager.py    模式管理                        │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -165,7 +165,7 @@ TennineClaw/
 ├── prompt_optimizer.py      # 用户输入提示词优化
 ├── prompts.py               # 系统提示词模板
 ├── safety.py                # 系统命令安全检测
-├── token_utils.py           # Token 统计与格式化
+├── token_utils.py           # Token 用量与格式化
 │
 ├── requirements.txt         # Python 依赖
 ├── run.bat / run.ps1        # Windows 启动脚本

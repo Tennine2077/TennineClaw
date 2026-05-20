@@ -93,7 +93,7 @@ def _build_status_snapshot(session_id: str = None):
     session, sid = _get_session(session_id)
     try:
         mode_name = session.get_mode_name()
-        msg_count = len(session.msgs)
+        msg_count = len(getattr(session, '_display_msgs', session.msgs))
         tokens = session.current_tokens
         completion_tk = getattr(session, "completion_tokens", 0)
         total_tk = getattr(session, "total_tokens", 0) or (tokens + completion_tk)
@@ -102,8 +102,6 @@ def _build_status_snapshot(session_id: str = None):
         composer_info = session.get_composer_status() if hasattr(session, 'get_composer_status') else ""
         session_title = session.get_title_display() if hasattr(session, 'get_title_display') else ""
 
-        # 获取会话级 Token 统计
-        session_completion_tokens = getattr(session, 'session_completion_tokens', 0)
 
         # 检查是否正在流式处理
         is_streaming = getattr(session, 'is_streaming', False)
@@ -118,8 +116,6 @@ def _build_status_snapshot(session_id: str = None):
         return {
             "mode_name": mode_name,
             "msg_count": msg_count,
-            "tokens": tokens,
-            "completion_tk": completion_tk,
             "total_tk": total_tk,
             "usage_pct": round(usage_pct, 1),
             "notification": notification,
@@ -127,7 +123,6 @@ def _build_status_snapshot(session_id: str = None):
             "session_title": session_title,
             "version": __version__,
             "is_streaming": is_streaming,
-            "session_completion_tokens": session_completion_tokens,
             "plan_ready": plan_ready,
             "session_id": sid,
         }
@@ -257,10 +252,7 @@ class ModeResponse(BaseModel):
 class StatusResponse(BaseModel):
     mode: str
     message_count: int
-    current_tokens: int
-    completion_tokens: int
     total_tokens: int
-    session_completion_tokens: int = 0
     usage_percent: float
     session_title: str
     composer_info: str
@@ -291,7 +283,7 @@ def _safe_get_status_data(session=None):
     """安全获取状态数据"""
     s = session or _session
     mode_name = s.get_mode_name()
-    msg_count = len(s.msgs)
+    msg_count = len(getattr(s, '_display_msgs', s.msgs))
     tokens = s.current_tokens
     completion_tk = getattr(s, "completion_tokens", 0)
     total_tk = getattr(s, "total_tokens", 0) or (tokens + completion_tk)
@@ -304,8 +296,6 @@ def _safe_get_status_data(session=None):
     return {
         "mode": mode_name,
         "message_count": msg_count,
-        "current_tokens": tokens,
-        "completion_tokens": completion_tk,
         "total_tokens": total_tk,
         "usage_percent": round(usage_pct, 1),
         "session_title": session_title,
@@ -453,8 +443,6 @@ async def chat_stream(req: ChatRequest):
                 done_data = json.dumps({
                     'type': 'interrupted_done',
                     'mode': mode,
-                    'input_tokens': input_tokens,
-                    'output_tokens': output_tokens,
                     'total_tokens': input_tokens + output_tokens,
                     'max_tokens': MAX_CTX_TOKENS,
                     'session_id': sid,
@@ -464,8 +452,6 @@ async def chat_stream(req: ChatRequest):
                 done_data = json.dumps({
                     'type': 'done',
                     'mode': mode,
-                    'input_tokens': input_tokens,
-                    'output_tokens': output_tokens,
                     'total_tokens': input_tokens + output_tokens,
                     'max_tokens': MAX_CTX_TOKENS,
                     'session_id': sid,
@@ -507,12 +493,12 @@ async def list_all_sessions():
     # 收集活跃会话
     active_sessions = []
     for sid, session in _session_registry.all_sessions().items():
-        if not getattr(session, 'msgs', None) and sid == 'default':
+        if not getattr(session, '_display_msgs', None) or getattr(session, 'msgs', None) and sid == 'default':
             continue  # 空的默认会话不显示
         active_sessions.append({
             "session_id": sid,
             "title": getattr(session, 'session_title', '') or sid[:8],
-            "msg_count": len(getattr(session, 'msgs', [])),
+            "msg_count": len(getattr(session, '_display_msgs', None) or getattr(session, 'msgs', [])),
             "is_streaming": getattr(session, 'is_streaming', False),
         })
 
@@ -525,7 +511,7 @@ async def list_all_sessions():
         sessions.append({
             "session_id": sid,
             "title": getattr(session, 'session_title', '') or sid[:8],
-            "msg_count": len(session.msgs),
+            "msg_count": len(getattr(session, '_display_msgs', session.msgs)),
         })
     return {"sessions": sessions}
 
@@ -539,7 +525,7 @@ async def get_active_session():
         "session_id": sid,
         "title": getattr(session, 'session_title', '') if session else '',
         "mode": session.get_mode_name() if session else 'smart',
-        "msg_count": len(session.msgs) if session else 0,
+        "msg_count": len(getattr(session, '_display_msgs', session.msgs)) if session else 0,
     }
 
 
@@ -665,17 +651,13 @@ async def get_full_status():
             with lock:
                 data = _build_status_snapshot()
         except Exception:
-            data = {"mode": "unknown", "message_count": 0, "current_tokens": 0,
-                    "completion_tokens": 0, "total_tokens": 0, "usage_percent": 0,
+            data = {"mode": "unknown", "message_count": 0, "total_tokens": 0, "usage_percent": 0,
                     "session_title": "", "composer_info": "", "notification": "", "version": __version__}
 
     return StatusResponse(
         mode=data.get("mode_name", "unknown"),
         message_count=data.get("msg_count", 0),
-        current_tokens=data.get("tokens", 0),
-        completion_tokens=data.get("completion_tk", 0),
         total_tokens=data.get("total_tk", 0),
-        session_completion_tokens=data.get("session_completion_tokens", 0),
         usage_percent=data.get("usage_pct", 0.0),
         session_title=data.get("session_title", ""),
         composer_info=data.get("composer_info", ""),
@@ -694,8 +676,6 @@ async def get_realtime_status():
             "status_text": "**模式**: 未知 | **消息**: 0 条",
             "mode": "unknown",
             "message_count": 0,
-            "tokens": 0,
-            "completion_tokens": 0,
             "total_tokens": 0,
             "usage_percent": 0,
             "notification": "",
@@ -715,16 +695,13 @@ async def get_realtime_status():
         status = (
             f"**模式**: {mode_name} | "
             f"**消息**: {msg_count} 条 | "
-            f"📥输入: {tokens:,} | 📤输出: {completion_tk:,} | "
             f"📊合计: {total_tk:,} ({usage_pct:.1f}%)"
         )
     else:
         from .config import MAX_CTX_TOKENS as max_ctx
-        input_pct = (tokens / max_ctx) * 100 if max_ctx > 0 else 0
         status = (
             f"**模式**: {mode_name} | "
-            f"**消息**: {msg_count} 条 | "
-            f"**Token**: {tokens:,} ({input_pct:.1f}%)"
+            f"**消息**: {msg_count} 条"
         )
 
     if notification:
@@ -737,8 +714,6 @@ async def get_realtime_status():
         "status_text": status,
         "mode": mode_name,
         "message_count": msg_count,
-        "tokens": tokens,
-        "completion_tokens": completion_tk,
         "total_tokens": total_tk,
         "usage_percent": usage_pct,
         "notification": notification,
@@ -779,7 +754,7 @@ async def get_session_messages(session_id: str = ""):
     # 不阻塞等锁（后台流可能正持有），timeout 0.5s 后无锁读取
     acquired = lock.acquire(timeout=0.5)
     try:
-        msgs = getattr(session, 'msgs', [])
+        msgs = getattr(session, '_display_msgs', None) or getattr(session, 'msgs', [])
         original_inputs = getattr(session, 'original_user_inputs', {})
         optimized_map = getattr(session, 'optimized_prompts', {})
         display_msgs = []
