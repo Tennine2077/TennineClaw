@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TennineClaw - 智能终端助手</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <button class="sidebar-toggle" id="sidebarToggle" title="切换侧边栏">☰</button>
+            <div class="logo">
+                <span class="logo-icon">🧠</span>
+                <span class="logo-text">TennineClaw</span>
+                <span class="version-badge" id="versionBadge">v10.0.0</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-label">在线</span>
+        </div>
+    </header>
+
+    <!-- 主布局 -->
+    <div class="main-layout">
+        <!-- 左侧：会话栏（ChatGPT 风格） -->
+        <aside class="left-sidebar" id="leftSidebar">
+            <div class="new-chat-wrapper">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <span class="new-chat-icon">✏️</span>
+                    <span>新开会话</span>
+                </button>
+            </div>
+            <div class="session-search-wrapper">
+                <input type="text" class="session-search" id="sessionSearch" placeholder="搜索会话..." autocomplete="off">
+            </div>
+            <div class="session-list" id="sessionList">
+                <!-- 由 JS 动态填充 -->
+            </div>
+        </aside>
+
+        <!-- 中间：聊天区域 -->
+        <div class="chat-area">
+            <!-- 会话标题 -->
+            <div class="session-header" id="sessionHeader">
+                <span class="session-icon">💬</span>
+                <span class="session-title" id="sessionTitle">当前会话：（暂无标题，发送消息后自动生成）</span>
+                <div class="header-spacer"></div>
+                <div class="model-switcher" id="modelSwitcher">
+                    <span class="model-label">模型</span>
+                    <select class="model-select" id="modelSelect">
+                        <option value="">加载中...</option>
+                    </select>
+                    <button class="model-add-btn" id="modelAddBtn" title="添加自定义模型">➕</button>
+                    <button class="model-del-btn" id="modelDelBtn" title="删除自定义模型" style="display:none">🗑️</button>
+                    <button class="model-cfg-btn" id="modelCfgBtn" title="配置当前模型的 API">⚙️</button>
+                </div>
+            </div>
+
+            <!-- 消息容器 -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-message" id="welcomeMessage">
+                    <div class="welcome-icon">👋</div>
+                    <h2>欢迎使用 TennineClaw</h2>
+                    <p>智能终端助手，支持工具调用、会话管理、三重缓存上下文</p>
+                    <div class="welcome-tips">
+                        <div class="tip-item">💬 在下方输入消息开始对话</div>
+                        <div class="tip-item">🧠 使用 <code>/smart</code> 或下方按钮切换模式</div>
+                        <div class="tip-item">📋 使用 <code>/plan</code> 切换到 Plan 驱动模式</div>
+                        <div class="tip-item">🧹 输入 <code>/clear</code> 清除上下文</div>
+                        <div class="tip-item">💾 左侧栏管理会话历史</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="chatInput" 
+                        class="chat-input" 
+                        placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+                        rows="1"
+                    ></textarea>
+                    <button class="interrupt-btn" id="interruptBtn" title="中断回复" style="display:none">
+                        ⏹️
+                    </button>
+                    <button class="send-btn" id="sendBtn" title="发送消息">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">按 Enter 发送 · Shift+Enter 换行</div>
+            </div>
+        </div>
+
+        <!-- 右侧：控制面板 -->
+        <aside class="right-sidebar" id="rightSidebar">
+            <!-- 控制按钮 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>🎮 控制面板</span>
+                </div>
+                <div class="panel-body">
+                    <div class="btn-group">
+                        <button class="btn btn-primary btn-smart" id="smartBtn">
+                            🧠 Smart 模式
+                        </button>
+                        <button class="btn btn-secondary btn-plan" id="planBtn">
+                            📋 Plan 模式
+                        </button>
+                    </div>
+                    <button class="btn btn-danger btn-full" id="clearBtn">
+                        🧹 清除上下文
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plan 菜单 -->
+            <div class="panel plan-menu-panel" id="planMenuPanel" style="display: none;">
+                <div class="panel-header plan-header">
+                    <span>📋 Plan 操作菜单</span>
+                </div>
+                <div class="panel-body">
+                    <div class="plan-notice">📌 Plan 已就绪！请选择下一步操作：</div>
+                    <div class="btn-group-vertical">
+                        <button class="btn plan-btn" id="planExploreBtn">
+                            1️⃣ 继续探索
+                        </button>
+                        <button class="btn plan-btn" id="planModifyBtn">
+                            2️⃣ 修改计划
+                        </button>
+                        <button class="btn plan-btn" id="planExecuteBtn">
+                            3️⃣ 🚀 切换 Smart 执行
+                        </button>
+                    </div>
+                    <div class="plan-action-row" id="planActionRow" style="display: none;">
+                        <button class="btn btn-sm" id="planResetBtn">↩️ 返回重选</button>
+                        <button class="btn btn-primary btn-sm" id="planConfirmBtn">✅ 确认选择</button>
+                    </div>
+                    <div class="plan-status" id="planStatus"></div>
+                </div>
+            </div>
+
+            <!-- Composer 状态 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>🧩 Composer 状态</span>
+                </div>
+                <div class="panel-body composer-panel" id="composerPanel">
+                    <div class="composer-status">
+                        <span class="badge badge-green">🟢 Micro</span>
+                        <span id="microCount">0</span> 次
+                    </div>
+                    <div class="composer-status">
+                        <span class="badge badge-blue">🔵 Auto</span>
+                        <span id="autoCount">0</span> 次
+                    </div>
+                    <div class="composer-status">
+                        <span class="badge badge-yellow">🟡 Manual</span>
+                        <span id="manualCount">0</span> 次
+                    </div>
+                    <div class="composer-notification" id="composerNotification" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Token 用量 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>📊 Token 用量</span>
+                </div>
+                <div class="panel-body token-panel" id="tokenPanel">
+                    <div class="token-status">
+                        <span class="badge badge-purple">📥 输入</span>
+                        <span id="tokenInput">0</span>
+                    </div>
+                    <div class="token-status">
+                        <span class="badge badge-teal">📤 输出</span>
+                        <span id="tokenOutput">0</span>
+                    </div>
+                    <div class="token-status">
+                        <span class="badge badge-orange">📊 总计</span>
+                        <span id="tokenTotal">0</span>
+                    </div>
+                    <div class="token-bar-wrapper">
+                        <div class="token-bar-label">占用率</div>
+                        <div class="token-bar">
+                            <div class="token-bar-fill" id="tokenBarFill" style="width: 0%"></div>
+                        </div>
+                        <div class="token-bar-text" id="tokenBarText">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>⚡ 快捷操作</span>
+                </div>
+                <div class="panel-body">
+                    <button class="btn btn-full btn-outline" id="compactBtn" style="margin-bottom:6px;">
+                        🗜️ 手动压缩上下文
+                    </button>
+                    <button class="btn btn-full btn-outline" id="statusBtn" style="margin-bottom:6px;">
+                        📊 查看 Composer 状态
+                    </button>
+                    <button class="btn btn-full btn-outline" id="helpBtn">
+                        ℹ️ 查看帮助
+                    </button>
+                </div>
+            </div>
+
+            <!-- Python 环境管理 -->
+            <div class="panel collapsible">
+                <div class="panel-header collapsible-header" id="envPanelToggle">
+                    <span>🐍 Python 环境</span>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div class="panel-body collapsible-body" id="envPanelBody">
+                    <!-- 当前环境信息 -->
+                    <div class="env-current" id="envCurrentInfo">
+                        <div class="env-current-label">当前环境</div>
+                        <div class="env-current-name" id="envCurrentName">加载中...</div>
+                        <div class="env-current-path" id="envCurrentPath">加载中...</div>
+                    </div>
+                    <!-- 可用环境列表 -->
+                    <div class="env-section">
+                        <div class="env-section-title">切换环境</div>
+                        <div class="env-conda-list" id="envCondaList">
+                            <div class="env-loading">加载中...</div>
+                        </div>
+                    </div>
+                    <!-- 新建环境 -->
+                    <div class="env-section">
+                        <div class="env-section-title">新建环境</div>
+                        <div class="env-create-row">
+                            <input type="text" class="form-input env-create-input" id="envCreateInput" placeholder="环境名称">
+                            <button class="btn btn-sm btn-primary" id="envCreateBtn">➕ 创建</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 脚本 -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
