@@ -821,7 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         
-        // 解析时间戳 "2025-05-20 16:30:00"
+        // 解析时间戳 "2025年5月20日 16:30:00"
         const parts = timestamp.split(' ');
         const datePart = parts[0];
         if (!datePart) return '其他';
