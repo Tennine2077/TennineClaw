@@ -84,9 +84,9 @@ _plan_selected = None  # Plan 菜单选择状态
 # 作用：当流式请求持有锁时，状态查询可读取缓存，不被阻塞
 # ============================================================
 
-_status_cache = {}
+_status_cache = {}  # key=session_id -> data  # key=session_id -> data  # key=session_id, value=data dict (per-session)
 _status_cache_lock = threading.Lock()
-_status_cache_time = 0.0
+_status_cache_time = {}  # key=session_id, value=timestamp
 
 def _build_status_snapshot(session_id: str = None):
     """直接从 session 读取当前状态（由 GIL 保证原子性）"""
@@ -132,25 +132,32 @@ def _build_status_snapshot(session_id: str = None):
     except Exception:
         return None
 
-def _update_status_cache():
-    """更新状态缓存（线程安全，无需 _session_lock）"""
-    snapshot = _build_status_snapshot()
+def _update_status_cache(session_id=None):
+    """更新指定会话的状态缓存（线程安全，无需 _session_lock）
+
+    Args:
+        session_id: 目标会话 ID，None 时使用活跃会话
+    """
+    snapshot = _build_status_snapshot(session_id)
     if snapshot:
+        sid = snapshot.get("session_id", session_id or _session_registry.get_active() or _default_session_id)
         with _status_cache_lock:
-            _status_cache.clear()
-            _status_cache.update(snapshot)
-            global _status_cache_time
-            _status_cache_time = time.time()
+            _status_cache[sid] = snapshot
+            _status_cache_time[sid] = time.time()
 
-# Register status update callback (after function definition)
-default_session = _session_registry.get("default")
-if default_session:
-    default_session.set_status_update_callback(_update_status_cache)
+def _get_cached_status(session_id=None):
+    """获取指定会话的缓存状态（线程安全）
 
-def _get_cached_status():
-    """获取缓存的状态快照（线程安全）"""
+    Args:
+        session_id: 目标会话 ID，None 时使用活跃会话
+    Returns:
+        缓存数据字典，不存在则返回空 dict
+    """
+    if session_id is None:
+        session_id = _session_registry.get_active() or _default_session_id
     with _status_cache_lock:
-        return dict(_status_cache) if _status_cache else {}
+        cached = _status_cache.get(session_id)
+        return dict(cached) if cached else {}
 
 def _get_status_with_cache(timeout=0.3, session_id: str = None):
     """尝试获取锁读取最新状态，超时则返回缓存
@@ -165,20 +172,19 @@ def _get_status_with_cache(timeout=0.3, session_id: str = None):
     acquired = lock.acquire(timeout=timeout)
     if acquired:
         try:
-            # 成功获取锁，读取最新数据，并更新缓存
+                        # 成功获取锁，读取最新数据，并更新缓存
             data = _build_status_snapshot(session_id)
             if data:
+                sid = data.get("session_id", session_id or _session_registry.get_active() or _default_session_id)
                 with _status_cache_lock:
-                    _status_cache.clear()
-                    _status_cache.update(data)
-                    global _status_cache_time
-                    _status_cache_time = time.time()
+                    _status_cache[sid] = data
+                    _status_cache_time[sid] = time.time()
             return data, False
         finally:
             lock.release()
     else:
-        # 锁被占用（流式请求正在处理），返回缓存
-        return _get_cached_status(), True
+        # 锁被占用（流式请求正在处理），返回该会话的缓存
+        return _get_cached_status(session_id), True
 
 
 def _try_lock_action(action_func, timeout=0.5, fallback=None):
@@ -261,6 +267,9 @@ class StatusResponse(BaseModel):
     composer_info: str
     notification: str
     version: str
+    micro_count: int = 0
+    auto_count: int = 0
+    manual_count: int = 0
 
 class SaveRequest(BaseModel):
     title: Optional[str] = ""
@@ -483,7 +492,7 @@ async def create_session():
     sid = _session_registry.create()
     _session_registry.set_active(sid)
     session = _session_registry.get(sid)
-    session.set_status_update_callback(_update_status_cache)
+    session.set_status_update_callback(lambda: _update_status_cache(session.session_id))
     # 立即自动保存新会话到磁盘，防止服务器重启后丢失
     from .session_manager import auto_save
     save_path = auto_save(session)
@@ -545,7 +554,7 @@ async def activate_session(session_id: str):
         # 尝试从注册表创建（可能文件已在侧栏，首次加载）
         _, session, _ = _session_registry.get_or_create(session_id)
     _session_registry.set_active(session_id)
-    session.set_status_update_callback(_update_status_cache)
+    session.set_status_update_callback(lambda: _update_status_cache(session.session_id))
     return {"session_id": session_id, "status": "success"}
 
 
@@ -679,6 +688,9 @@ async def get_full_status():
         composer_info=data.get("composer_info", ""),
         notification=data.get("notification", ""),
         version=data.get("version", __version__),
+        micro_count=data.get("micro_count", 0),
+        auto_count=data.get("auto_count", 0),
+        manual_count=data.get("manual_count", 0),
     )
 
 

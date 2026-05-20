@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sessions: [],           // 已保存的会话文件列表
         activeSessions: [],     // 活跃 registry session 列表
         currentActivePath: null, // 当前高亮的会话路径
-        activeSessionId: 'default',  // 始终使用默认会话
+        activeSessionId: 'default',  // 初始为默认会话，切换后更新
         sessionInputs: {},      // 保存每个 session 的输入框文字 { sessionId: text }
     };
 
@@ -715,6 +715,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             state.activeSessionId = newSid;
             
+            // 立即刷新 composer 状态（新会话从 0 开始）
+            el.microCount.textContent = '0';
+            el.autoCount.textContent = '0';
+            el.manualCount.textContent = '0';
+            el.composerNotification.style.display = 'none';
+            
             // 清空消息区域
             el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
             el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
@@ -999,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             state.currentActivePath = null;
             state.currentMode = msgData.mode || state.currentMode;
+            // 切换 session 后立即刷新 composer 状态
             await updateFullStatus();
             await updateSessionTitle();
             await checkPlanMenu();
