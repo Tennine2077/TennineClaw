@@ -124,9 +124,9 @@ AVAILABLE_MODELS = [
 # ============================================================
 # 上下文限制
 # ============================================================
-MAX_CTX_TOKENS = 128000
+MAX_CTX_TOKENS = 524,288
 COMPACT_THRESHOLD = int(MAX_CTX_TOKENS * 0.8)  # 80% 时触发压缩
-COMPRESS_MAX_CHARS = 30000  # 压缩后最大字符数
+COMPRESS_MAX_CHARS = 32768  # 压缩后最大字符数
 
 # ============================================================
 # 运行模式
@@ -194,7 +194,7 @@ HIGH_RISK_PATTERNS = [
 # ============================================================
 COMPOSER_ENABLED = True                 # 上下文压缩开关
 MICRO_COMPOSER_KEEP_ROUNDS = 2          # Micro Composer 保留轮数
-MANUAL_COMPOSER_MAX_CHARS = 30000       # 手动压缩最大字符数
+MANUAL_COMPOSER_MAX_CHARS = 32768       # 手动压缩最大字符数
 
 # ============================================================
 # 超时配置（支持长时任务）
