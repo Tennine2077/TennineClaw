@@ -1,6 +1,6 @@
-# TennineClaw 项目说明文档
+﻿# TennineClaw 项目说明文档
 
-> **版本**: 11.0.0  
+> **版本**: 1.0.0  
 > **描述**: 智能终端助手 — 基于 AI 的代码分析与任务执行 Web 平台  
 > **许可**: MIT License  
 > **项目路径**: `D:\Code\tools\Claude_code_learn\TennineClaw`
@@ -113,7 +113,7 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `__version__` | `"11.0.0"` | 当前版本号，API 响应和前端显示均引用此值 |
+| `__version__` | `"1.0.0"` | 当前版本号，API 响应和前端显示均引用此值 |
 | `__description__` | `"Intelligent Terminal Assistant - AI 编程助手"` | 项目描述 |
 | `__license__` | `"MIT"` | 开源许可协议 |
 
@@ -880,5 +880,7 @@ AgentSession                         Master Agent
 
 > **文档版本**: 1.0  
 > **生成日期**: 2026-05-20  
-> **对应代码版本**: v11.0.0  
-> **最近更新**: 2026-05-20 — 新增"未来更新目标"章节 (5.1 Skill 系统, 5.2 多 Agent 协同)
+> **对应代码版本**: v1.0.0  
+> **最近更新**: 2026-05-20 — 首个正式版本
+
+

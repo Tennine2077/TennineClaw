@@ -1,12 +1,20 @@
-# TennineClaw
+﻿# TennineClaw
 
 > 智能终端助手 — 基于 AI 的代码分析与任务执行平台
 
-[![Version](https://img.shields.io/badge/version-11.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
 TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式对话、代码执行、文件操作、Git 集成、会话管理和上下文压缩。
+
+---
+
+## 📅 更新时间轴
+
+| 日期 | 版本 | 亮点 |
+|------|------|------|
+| 🆕 2026-05 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE流式)、19个工具、三重 Composer 上下文压缩、多会话管理、Smart/Plan 双模式 |
 
 ---
 
@@ -265,4 +273,111 @@ MIT License
 
 ---
 
+## 📋 完整更新日志
+
+### v1.0.0 (2026-04)
+
+**Web UI 全面重构 — FastAPI + 多会话 + SSE 流式**
+
+- 从 Gradio 迁移到 **FastAPI + 静态前端**，支持 37+ RESTful 路由
+- 引入 **SSE 流式对话**（`/api/chat/stream`），逐段落推送推理+回复
+- 多会话管理：SessionRegistry + per-session 锁 + 独立会话切换
+- **状态缓存系统**：流式期间状态查询 0.3s 超时降级，不阻塞流式请求
+- 模型 API 覆盖：每个模型可独立配置 base_url / api_key，持久化到 user_config.json
+- 自定义模型：支持添加/删除第三方模型（GPT、Claude 等）
+- Plan 菜单交互：explore / modify / execute / confirm / reset 五种操作
+- 对话中断机制：前端打断时设置 `_stream_interrupted`，安全保存已回复内容
+- 原始输入与优化 Prompt 分别记录，前端 UI 中展示优化前后对比
+- 深色/浅色主题全面适配
+- 右侧面板实时显示 Composer 状态与 Token 监控
+
+### v10.0.0 (2026-03)
+
+**Composer 三重上下文压缩定型**
+
+- **Micro Composer** — 每轮对话后自动清理旧 tool 调用信息，保留最近 N 轮
+- **Auto Composer** — Token 达 80% 阈值时自动触发 LLM 语义压缩，降级截断
+- **Manual Composer** — 用户通过 `/compact` 手动触发，压缩全部上下文
+- LLM 压缩 prompt 优化：区分 Auto 与 Manual 两种摘要策略
+- Composer 触发统计：次数记录 + 消息数/Token 变化展示
+- 压缩失败降级策略：LLM 异常时自动回退到截断模式
+- Token 监控系统：实时输入/输出/总计显示，会话级累计统计
+
+### v9.0.0 (2026-02)
+
+**流式引擎重构**
+
+- 流式对话循环：`process_message_stream()` 生成器模式
+- 文本分段输出：`_split_into_paragraphs()` 多策略分割（段落→行→句子→子句）
+- 推理摘要提取：`_get_reasoning_summary()` 去除标记符，输出紧凑 thinking
+- 工具调用链流式处理：逐工具执行并在流中插入结果通知
+- 会话自动保存：每轮完成后保存为 JSON 文件
+- Plan 模式自动检测：回复末尾自动附加 Plan 菜单提示
+- Token 统计尾部附加：回复完成后显示本轮/累计 Token 数
+- 会话标题自动生成：首次用户消息取前 N 字作为标题
+- 模式 system prompt 周期性注入：每 3 轮或切换后自动注入
+
+### v8.0.0 (2026-01)
+
+**全面工具集**
+
+- **搜索工具**：`tool_grep()` — 正则搜索 + 文件通配符 + 上下文行
+- **替换工具**：`tool_replace()` — 默认预览模式，确认后执行
+- **文件查找**：`tool_find_files()` — 花括号展开 + 三种排序
+- **代码统计**：`tool_count_lines()` — 按文件类型分组统计
+- **差异比较**：`tool_diff()` — unified_diff 格式 + 增减统计
+- **Git 工具集**：`git_status` / `git_log` / `git_diff` / `git_commit_stats` / `show_file`
+- `git_status`：分支 + ahead/behind + 暂存/未暂存/冲突/未跟踪
+- `git_log`：short SHA + 作者 + 相对时间 + 主题
+- `git_commit_stats`：条形图 + 百分比排名
+- **Conda 环境管理**：`list_conda_envs()` / `switch_conda_env()` / `create_conda_env()`
+- **命令执行**：`tool_run_cmd()` — UTF-8 编码适配 + 30s 超时 + 输出截断 10K
+- **文件操作**：`tool_read_file()` / `tool_write_file()` / `tool_delete_file()`
+- 系统关键路径保护：C:\Windows、C:\Program Files 删除拦截
+- 目录操作优化：隐藏文件过滤 + 忽略目录自动跳过
+
+### v7.0.0 (2025-12)
+
+**Gradio 界面 + Prompt 优化 + 双模式**
+
+- Gradio Web UI 初始版本
+- Prompt 智能优化：`optimize_prompt()` 调用 LLM 打磨用户输入
+- Smart / Plan 双模式切换
+- ModeManager 模式管理：`set_mode()` / `get_mode()` / `is_plan_ready()`
+- 指令系统：`/clear` / `/compact` / `/smart` / `/plan` / `/help` / `/tools` / `/status`
+- 命令安全检测：`check_command_safety()` 高危命令拦截 + 中危警告
+- 系统 Prompts 模板：`build_system_prompt()` 双模式差异化
+- 工具注册表：`dispatch_tool()` 统一调度 + 超时线程保护
+- 32,000 字符结果截断 + 2,000 字符工具结果截断
+
+### v6.0.0 (2025-11)
+
+**初始功能基座**
+
+- OpenAI SDK 集成，Function Calling 风格工具调用
+- 基础命令执行 `tool_run_cmd()` 初始版
+- 基础文件读写与目录操作
+- 系统信息查询与当前时间
+- 配置管理：`.env` 环境变量加载
+- 会话初始保存/加载机制
+- 基础 Token 统计
+
+---
+
 **Made with ❤️**
+(2025-11)
+
+**初始功能基座**
+
+- OpenAI SDK 集成，Function Calling 风格工具调用
+- 基础命令执行 `tool_run_cmd()` 初始版
+- 基础文件读写与目录操作
+- 系统信息查询与当前时间
+- 配置管理：`.env` 环境变量加载
+- 会话初始保存/加载机制
+- 基础 Token 统计
+
+---
+
+**Made with ❤️**
+
