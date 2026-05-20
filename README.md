@@ -47,13 +47,7 @@ pip install -r requirements.txt
 
 ### 2. 启动
 
-**Windows 用户：**
-```bash
-run.bat
 ```
-
-**或直接运行：**
-```bash
 python -m web_api
 ```
 
