@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TennineClaw - 智能终端助手</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Highlight.js: 代码语法高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github-dark.min.css" id="hljsTheme">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 </head>
 <body>
@@ -115,9 +117,6 @@
                             📋 Plan 模式
                         </button>
                     </div>
-                    <button class="btn btn-danger btn-full" id="clearBtn">
-                        🧹 清除上下文
-                    </button>
                 </div>
             </div>
 
@@ -244,7 +243,11 @@
     <!-- Toast 通知 -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- 脚本 -->
+    <!-- Markdown 解析库: marked -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 代码语法高亮: highlight.js -->
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/highlight.min.js"></script>
+    <!-- 项目脚本 -->
     <script src="/static/js/api.js"></script>
     <script src="/static/js/app.js"></script>
 </body>

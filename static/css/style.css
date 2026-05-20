@@ -725,6 +725,60 @@ html, body {
     background: var(--bg-tertiary);
     font-weight: 600;
 }
+
+/* ---------- marked.js + highlight.js 增强样式 ---------- */
+/* 修复 p 标签包裹块级元素时的间距问题 */
+.message-content p:has(+ pre),
+.message-content p:has(+ table),
+.message-content p:has(+ ul),
+.message-content p:has(+ ol),
+.message-content p:has(+ blockquote) {
+    margin-bottom: 4px;
+}
+.message-content p + pre,
+.message-content p + table,
+.message-content p + ul,
+.message-content p + ol,
+.message-content p + blockquote {
+    margin-top: 4px;
+}
+/* highlight.js 代码块增强 */
+.message-content pre {
+    border: 1px solid var(--border-color);
+}
+.message-content pre code.hljs {
+    background: transparent;
+    padding: 0;
+}
+/* 任务列表（GFM）样式 */
+.message-content ul.contains-task-list {
+    list-style: none;
+    padding-left: 4px;
+}
+.message-content .task-list-item {
+    list-style: none;
+}
+.message-content .task-list-item input[type="checkbox"] {
+    margin-right: 6px;
+    accent-color: var(--accent-primary);
+}
+/* 行内代码在 p 标签内的修复 */
+.message-content p > code,
+.message-content li > code,
+.message-content td > code {
+    background: rgba(0,0,0,0.1);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+}
+/* 图片自适应 */
+.message-content img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
 .optimized-prompt {
     margin: 6px 0 8px 48px;
     padding: 8px 12px;

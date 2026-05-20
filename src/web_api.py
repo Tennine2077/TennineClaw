@@ -481,6 +481,11 @@ async def create_session():
     _session_registry.set_active(sid)
     session = _session_registry.get(sid)
     session.set_status_update_callback(_update_status_cache)
+    # 立即自动保存新会话到磁盘，防止服务器重启后丢失
+    from .session_manager import auto_save
+    save_path = auto_save(session)
+    if save_path:
+        session._session_save_path = save_path
     return {"session_id": sid, "status": "success"}
 
 
@@ -580,16 +585,6 @@ async def switch_to_plan():
         mode = session.get_mode_name()
     _update_status_cache()
     return ModeResponse(message=result, mode=mode)
-
-
-@app.post("/api/context/clear")
-async def clear_context():
-    """清除上下文"""
-    session, lock = _get_session_and_lock()
-    with lock:
-        session.reset()
-    _update_status_cache()
-    return {"message": "🧹 上下文已清除！", "status": "success"}
 
 
 @app.post("/api/context/compact")

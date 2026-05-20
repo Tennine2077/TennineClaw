@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionTitle: $('sessionTitle'),
         smartBtn: $('smartBtn'),
         planBtn: $('planBtn'),
-        clearBtn: $('clearBtn'),
+
         themeToggle: $('themeToggle'),
 
         // 左侧会话栏
@@ -118,93 +118,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderMarkdown(text) {
-        // Step 1: 保护代码块和行内代码
-        const codeBlocks = [];
-        const inlineCodes = [];
+        // 使用 marked.js 解析 Markdown（支持 GFM）
+        if (typeof marked !== "undefined" && marked.parse) {
+            return marked.parse(text, { breaks: true, gfm: true });
+        }
+        // fallback: 如果 marked 未加载，返回纯文本
+        var div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-        let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-            const idx = codeBlocks.length;
-            codeBlocks.push({ lang, code });
-            return `%%CODEBLOCK_${idx}%%`;
-        });
-
-        processed = processed.replace(/`([^`]+)`/g, (_, code) => {
-            const idx = inlineCodes.length;
-            inlineCodes.push(code);
-            return `%%INLINECODE_${idx}%%`;
-        });
-
-        let html = escapeHtml(processed);
-
-        // 标题
-        html = html.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-        html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
-        html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-        // 水平线
-        html = html.replace(/^---+$/gm, '<hr>');
-        html = html.replace(/^\*{3,}$/gm, '<hr>');
-        html = html.replace(/^_{3,}$/gm, '<hr>');
-
-        // 列表
-        html = html.replace(/^[\s]*[-*+]\s+(.+)$/gm, '<li>$1</li>');
-        html = html.replace(/^[\s]*\d+\.\s+(.+)$/gm, '<li>$1</li>');
-        html = html.replace(/((?:<li>.*?<\/li>\n?)+)/g, '<ul>$1</ul>');
-
-        // 引用
-        html = html.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
-        html = html.replace(/(<blockquote>.*?<\/blockquote>\n?)+/g, function(match) {
-            var contents = match.match(/<blockquote>(.*?)<\/blockquote>/g);
-            if (contents) {
-                var merged = contents.map(function(c) { return c.replace(/<\/?blockquote>/g, ''); }).join('<br>');
-                return '<blockquote>' + merged + '</blockquote>';
-            }
-            return match;
-        });
-
-        // 粗体和斜体
-        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-
-        // 链接
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-        // 表格
-        html = html.replace(/^\|(.+)\|$/gm, function(match) {
-            var cells = match.slice(1, -1).split('|').map(function(c) { return c.trim(); });
-            if (cells.every(function(c) { return /^-+$/.test(c); })) return '';
-            return '<tr><td>' + cells.join('</td><td>') + '</td></tr>';
-        });
-        html = html.replace(/((?:<tr>.*?<\/tr>\n?)+)/g, '<table>\n$1\n</table>');
-
-        // 换行保护
-        var protectedTags = [];
-        html = html.replace(/<(pre|code|table|ul|ol|blockquote|h[1-6])[^>]*>[\s\S]*?<\/\1>/g, function(match) {
-            var idx = protectedTags.length;
-            protectedTags.push(match);
-            return `%%PROTECTED_${idx}%%`;
-        });
-        html = html.replace(/\n/g, '<br>');
-        protectedTags.forEach(function(tag, idx) {
-            html = html.replace(`%%PROTECTED_${idx}%%`, tag);
-        });
-
-        // 恢复行内代码
-        inlineCodes.forEach(function(code, idx) {
-            html = html.replace(`%%INLINECODE_${idx}%%`, '<code>' + escapeHtml(code) + '</code>');
-        });
-
-        // 恢复代码块
-        codeBlocks.forEach(function(block, idx) {
-            var escapedCode = escapeHtml(block.code);
-            var langClass = block.lang ? ' class="language-' + escapeHtml(block.lang) + '"' : '';
-            html = html.replace('%%CODEBLOCK_' + idx + '%%', '<pre><code' + langClass + '>' + escapedCode + '</code></pre>');
-        });
-
-        return html;
+    /**
+     * 娓叉煋 Markdown 骞堕珮浜唬鐮佸潡锛堢敤浜庨潪娴佸紡鍦烘櫙锛?
+     */
+    function renderMarkdownWithHighlight(text) {
+        if (typeof marked === "undefined" || !marked.parse) {
+            var div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        var html = marked.parse(text, { breaks: true, gfm: true });
+        var temp = document.createElement("div");
+        temp.innerHTML = html;
+        if (typeof hljs !== "undefined" && hljs.highlightElement) {
+            temp.querySelectorAll("pre code").forEach(function(block) {
+                hljs.highlightElement(block);
+            });
+        }
+        return temp.innerHTML;
     }
 
     function addMessage(content, role) {
@@ -295,7 +236,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} fullContent - Final complete content
      */
     function finalizeStreamingContent(contentDiv, fullContent) {
-        contentDiv.innerHTML = renderMarkdown(fullContent);
+        // 流式完成后，使用带代码高亮的渲染
+        contentDiv.innerHTML = renderMarkdownWithHighlight(fullContent);
         el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
     }
 
@@ -790,41 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ============================================================
-    // 清除上下文
-    // ============================================================
-    async function clearContext() {
-        try {
-            if (state.abortController) {
-                state.abortController.abort();
-                state.abortController = null;
-            }
-            
-            const data = await API.clearContext();
-            // 清空所有消息、优化提示框等非欢迎页元素
-            el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
-            el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
-            if (el.welcomeMessage) {
-                el.welcomeMessage.classList.remove('hidden');
-                el.welcomeMessage.style.display = 'block';
-            }
-            state.currentActivePath = null;
-            renderSessionList();
-            showToast(data.message || '🧹 上下文已清除！', 'success');
-            await updateFullStatus();
-            await updateSessionTitle();
-            await checkPlanMenu();
-        } catch (error) {
-            showToast(`清除失败: ${error.message}`, 'error');
-        }
-    }
 
-    // ============================================================
-    // 快捷操作：手动压缩 / 查看状态 / 帮助
-    // ============================================================
-
-    /**
-     * Manually compact the chat context
-     */
     async function compactContext() {
         if (state.isStreaming) {
             showToast('\u23f3 AI \u54cd\u5e94\u4e2d\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5', 'warning');
@@ -950,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (m.role === 'user') {
                 contentDiv.textContent = m.content;
             } else {
-                contentDiv.innerHTML = renderMarkdown(m.content);
+                contentDiv.innerHTML = renderMarkdownWithHighlight(m.content);
             }
 
             msgDiv.appendChild(avatar);
@@ -1624,6 +1532,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // 主题切换
     // ============================================================
+    /**
+     * 切换 highlight.js 主题（跟随系统主题）
+     */
+    function setHighlightTheme(theme) {
+        var link = document.getElementById('hljsTheme');
+        if (!link) return;
+        if (theme === 'light') {
+            link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github.min.css';
+        } else {
+            link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github-dark.min.css';
+        }
+    }
+
     function toggleTheme() {
         const html = document.documentElement;
         const currentTheme = html.getAttribute('data-theme');
@@ -1631,12 +1552,14 @@ document.addEventListener('DOMContentLoaded', () => {
         html.setAttribute('data-theme', newTheme);
         el.themeToggle.textContent = newTheme === 'dark' ? '🌙' : '☀️';
         localStorage.setItem('theme', newTheme);
+        setHighlightTheme(newTheme);
     }
 
     function loadTheme() {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
         el.themeToggle.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+        setHighlightTheme(savedTheme);
     }
 
     // ============================================================
@@ -1681,9 +1604,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 模式切换
     el.smartBtn.addEventListener('click', () => switchMode('smart'));
     el.planBtn.addEventListener('click', () => switchMode('plan'));
-
-    // 清除上下文
-    el.clearBtn.addEventListener('click', clearContext);
 
     // 新开会话（创建新后台会话，不中断当前）
     el.newChatBtn.addEventListener('click', newChat);

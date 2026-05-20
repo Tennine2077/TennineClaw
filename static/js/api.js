@@ -69,13 +69,6 @@ const API = {
     },
 
     /**
-     * 清除上下文
-     */
-    async clearContext() {
-        return this._request('POST', '/api/context/clear');
-    },
-
-    /**
      * 获取完整状态
      */
     async getFullStatus() {
