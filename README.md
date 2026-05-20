@@ -48,7 +48,7 @@ pip install -r requirements.txt
 ### 2. 启动
 
 ```
-python -m web_api
+python -m src.web_api
 ```
 
 ### 3. 配置 API
