@@ -360,7 +360,7 @@ def _llm_compress(history_text: str, client, max_chars: int = 30000, full_summar
         压缩后的摘要文本
     """
     if full_summary:
-        compress_prompt = f"""你是一个专业的对话摘要助手。请将以下完整对话历史压缩成一段全面的摘要（严格控制在 {max_chars} 字以内）。
+        compress_prompt = f"""你是一个专业的对话摘要助手。请将以下完整对话历史压缩成一段全面的摘要（严格控制在 {max_chars} 字以内，也不少于 {max_chars*0.8} 字）。
 
 要求：
 - 保留用户的核心需求、所有问题和关注点
@@ -373,9 +373,9 @@ def _llm_compress(history_text: str, client, max_chars: int = 30000, full_summar
 完整对话历史：
 {history_text}
 
-请直接输出压缩后的摘要（不超过 {max_chars} 字）："""
+请直接输出压缩后的摘要（不超过 {max_chars} 字，也不少于 {max_chars*0.8} 字）："""
     else:
-        compress_prompt = f"""你是一个专业的对话摘要助手。请将以下历史对话内容压缩成一段简洁的摘要（严格控制在 {max_chars} 字以内）。
+        compress_prompt = f"""你是一个专业的对话摘要助手。请将以下历史对话内容压缩成一段简洁的摘要（严格控制在 {max_chars} 字以内，也不少于 {max_chars*0.8} 字）。
 
 要求：
 - 保留用户的核心需求、问题和关注点
@@ -387,7 +387,7 @@ def _llm_compress(history_text: str, client, max_chars: int = 30000, full_summar
 历史对话内容：
 {history_text}
 
-请直接输出压缩后的摘要（不超过 {max_chars} 字）："""
+请直接输出压缩后的摘要（不超过 {max_chars} 字，也不少于 {max_chars*0.8} 字）："""
 
     compress_res = client.chat.completions.create(
         model="deepseek-v4-flash",

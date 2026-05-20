@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # TennineClaw - 智能终端助手（Gradio 版）
 # ============================================================
 # 主入口：包含对话逻辑、API 交互、工具调度
@@ -134,6 +134,20 @@ class AgentSession(AgentSessionStreamMixin):
         self._partial_stream_content = ""
 
     # ============================================================
+    # Token 估算（用于模式切换/压缩后重算上下文用量）
+    # ============================================================
+    @staticmethod
+    def _estimate_tokens(msgs: list) -> int:
+        """根据消息列表内容估算 Token 数"""
+        total = 0
+        for msg in msgs:
+            txt = msg.get("content", "") or ""
+            cjk = sum(1 for c in txt if '\u4e00' <= c <= '\u9fff')
+            other = len(txt) - cjk
+            total += max(int(cjk / 1.5 + other / 4), 0) + 4
+        return total
+
+    # ============================================================
     # 统一消息追加（双写：模型用 msgs + 展示用 _display_msgs）
     # ============================================================
     def _append_msg(self, msg: dict):
@@ -169,32 +183,84 @@ class AgentSession(AgentSessionStreamMixin):
             status.append(f"🔔 **最新通知**: {self.composer_notification}")
         return "\n".join(status)
 
+    
     def switch_mode(self, mode: int) -> str:
         """切换模式并返回提示信息"""
         if self.mode_mgr.set_mode(mode):
             self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
             mode_name = self.mode_mgr.get_mode_name()
-            # 特例：没有上下文（仅 system 一条）时，直接更新 msgs[0]
+
+            # 切换前先清理历史遗留的多余 system prompt
+            self._cleanup_old_system_prompts()
+
+            # === 三场景决策逻辑 ===
             if len(self.msgs) <= 1:
+                # 场景 1：没有上下文 → 替换 msgs[0]
                 self.msgs[0] = {"role": "system", "content": self.system_prompt}
                 self._display_msgs[0] = {"role": "system", "content": self.system_prompt}
             else:
-                # 有对话历史时：追加新 system prompt，不碰 msgs[0]
-                self._append_msg({"role": "system", "content": self.system_prompt})
-                # 标记有待注入的 system prompt（下轮对话前处理）
-                self._pending_mode_switch = True
-            self.current_tokens = 0
-            self.last_token_stats = ""
-            self.completion_tokens = 0
-            self.total_tokens = 0
-            # 切换模式时重置 Token 累计
+                # 有上下文 → 检查最后一条消息的 role
+                last_role = self.msgs[-1].get("role", "")
+
+                if last_role == "system":
+                    # 场景 3：最后一条是 system → 替换 content（不新增消息）
+                    self.msgs[-1]["content"] = self.system_prompt
+                    if len(self._display_msgs) > 0:
+                        self._display_msgs[-1]["content"] = self.system_prompt
+                else:
+                    # 场景 2：最后一条不是 system → 追加新的 system（保留旧上下文）
+                    self._append_msg({"role": "system", "content": self.system_prompt})
+
+            # 标记有待注入的模式指令（下轮对话前 _inject_mode_prompt_if_needed 处理）
+            self._pending_mode_switch = True
+
+            # 从现有消息重新估算 Token 数
+            self.current_tokens = self._estimate_tokens(self.msgs)
+            self.last_token_stats = (
+                f"📊 输入: {self.current_tokens:,} | "
+                f"输出: {self.completion_tokens:,} | "
+                f"合计: {self.current_tokens + self.completion_tokens:,} | "
+                f"占用: {(self.current_tokens / MAX_CTX_TOKENS) * 100:.1f}%"
+            )
+            self.total_tokens = self.current_tokens + self.completion_tokens
+            # 切换模式时重置本轮 completion 累计（上下文 Token 保留）
             self.session_completion_tokens = 0
             return f"🔄 已切换为 {mode_name}"
         return "❌ 模式切换失败"
 
     # ============================================================
-    # 会话标题系统
+    # 清理历史遗留的多余 System Prompt
     # ============================================================
+
+    def _cleanup_old_system_prompts(self):
+        """清理多余的历史 system prompt，只保留最新的两条：
+        - msgs[0]：主 system prompt（角色定义、工具定义等）
+        - 最后一条 system prompt（当前模式的完整规则）
+
+        如果只有 1~2 条 system，无需清理。
+        如果有多条 system，删除中间的，只保留 msgs[0] 和最后一条。
+        """
+        system_indices = []
+        for i, msg in enumerate(self.msgs):
+            if msg.get("role") == "system":
+                system_indices.append(i)
+
+        if len(system_indices) <= 2:
+            return  # 1 或 2 条都是合理的，无需清理
+
+        # 保留 msgs[0]（主 prompt）和最后一个 system（当前模式 prompt）
+        keep_indices = {0, system_indices[-1]}
+
+        # 从后往前删除中间多余的 system（避免索引偏移）
+        for i in reversed(system_indices):
+            if i not in keep_indices:
+                del self.msgs[i]
+                if i < len(self._display_msgs):
+                    del self._display_msgs[i]
+
+        # 重新估算 Token
+        self.current_tokens = self._estimate_tokens(self.msgs)
+# ============================================================
 
     def _auto_set_title(self, user_input: str):
         """首次收到用户消息时自动截取前 N 字作为标题"""
@@ -270,12 +336,26 @@ class AgentSession(AgentSessionStreamMixin):
         old_len = len(self.msgs)
         before_tokens = self.current_tokens
         self.msgs, stats = manual_composer(self.msgs, self.client, self.system_prompt)
-        self.current_tokens = 0
+        # 压缩完成后立即重新计算 Token
+        self.current_tokens = self._estimate_tokens(self.msgs)
+        self.last_token_stats = (
+            f"📊 输入: {self.current_tokens:,} | "
+            f"输出: {self.completion_tokens:,} | "
+            f"合计: {self.current_tokens + self.completion_tokens:,} | "
+            f"占用: {(self.current_tokens / MAX_CTX_TOKENS) * 100:.1f}%"
+        )
+        self.total_tokens = self.current_tokens + self.completion_tokens
         self.manual_composer_count += 1
         self.last_composer_action = f"Manual Composer: {old_len} → {len(self.msgs)} 条消息"
+        # 补充 Token 变化信息
+        token_change = ""
+        if before_tokens > 0 and self.current_tokens > 0:
+            saved = before_tokens - self.current_tokens
+            pct = (1 - self.current_tokens / before_tokens) * 100
+            token_change = f" | Token: {before_tokens:,} → {self.current_tokens:,} (-{pct:.0f}%)"
         self.composer_notification = (
             f"🟡 Manual Composer 已触发: "
-            f"{old_len} → {len(self.msgs)} 条消息"
+            f"{old_len} → {len(self.msgs)} 条消息{token_change}"
         )
         return stats
 
@@ -579,21 +659,45 @@ class AgentSession(AgentSessionStreamMixin):
             )
 
     def _inject_mode_prompt_if_needed(self):
-        """在用户消息前注入当前模式的 system prompt（每 3 轮或切换后）"""
+        """在用户消息前注入当前模式的简短提醒（每 3 轮或切换后）
+
+        与 switch_mode() 的分工：
+        - switch_mode() 处理完整的 system prompt（工具定义+角色+规则）
+        - 本方法注入简短的模式指令（仅提醒当前模式，~50 tokens）
+
+        注入策略：
+        - 从后往前找非 msgs[0] 的 system 消息，替换为最新模式指令
+        - 如果没有找到（异常），追加一条新的
+        - 避免与 switch_mode() 刚追加/替换的完整 system prompt 并存
+        """
         if len(self.msgs) <= 1:
             return  # 无上下文时不注入（msgs[0] 已有完整 prompt）
 
         should_inject = self._pending_mode_switch
 
-        # 每 3 轮对话自动注入
+        # 每 3 轮对话自动注入（防止 AI 遗忘当前模式）
         if not should_inject and self._round_count > 0 and self._round_count % 3 == 0:
             should_inject = True
 
         if should_inject:
             inject_text = self._build_mode_inject_text()
-            self._append_msg({"role": "system", "content": inject_text})
-            self._pending_mode_switch = False
 
+            # 从后往前找，替换最后一个非 msgs[0] 的 system 消息
+            replaced = False
+            for i in range(len(self.msgs) - 1, 0, -1):  # 从倒数第一条到索引 1
+                if self.msgs[i].get("role") == "system":
+                    # 替换为最新的模式指令
+                    self.msgs[i]["content"] = inject_text
+                    if i < len(self._display_msgs):
+                        self._display_msgs[i]["content"] = inject_text
+                    replaced = True
+                    break
+
+            if not replaced:
+                # 没有 system 消息（除了 msgs[0]），追加一条
+                self._append_msg({"role": "system", "content": inject_text})
+
+            self._pending_mode_switch = False
     def _on_round_complete(self):
         """对话轮次完成时调用（每轮结束递增计数）"""
         self._round_count += 1
@@ -877,4 +981,5 @@ class AgentSession(AgentSessionStreamMixin):
             desc = tool["function"]["description"]
             lines.append(f"- **{name}**: {desc}")
         return "\n".join(lines)
+
 

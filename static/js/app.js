@@ -827,15 +827,26 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function compactContext() {
         if (state.isStreaming) {
-            showToast('⏳ AI 响应中，请稍后再试', 'warning');
+            showToast('\u23f3 AI \u54cd\u5e94\u4e2d\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5', 'warning');
             return;
         }
+        const btn = el.compactBtn;
+        const originalText = btn.textContent || '\ud83d\udedc\ufe0f \u624b\u52a8\u538b\u7f29';
+        btn.disabled = true;
+        btn.textContent = '\u23f3 \u538b\u7f29\u4e2d...';
+        btn.classList.add('loading');
         try {
             const data = await API.compactContext();
-            showToast(data.message || '🗜️ 手动压缩完成！', 'success');
+            const msg = data.message || '';
+            const hasToken = msg.indexOf('Token') >= 0 || msg.indexOf('token') >= 0;
+            showToast(hasToken ? msg : '\ud83d\udedc\ufe0f ' + msg, 'success');
             await updateFullStatus();
         } catch (error) {
-            showToast(`压缩失败: ${error.message}`, 'error');
+            showToast('\u538b\u7f29\u5931\u8d25: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            btn.classList.remove('loading');
         }
     }
 
