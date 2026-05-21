@@ -193,7 +193,7 @@ HIGH_RISK_PATTERNS = [
 # 功能开关
 # ============================================================
 COMPOSER_ENABLED = True                 # 上下文压缩开关
-MICRO_COMPOSER_KEEP_ROUNDS = 2          # Micro Composer 保留轮数
+MICRO_COMPOSER_KEEP_ROUNDS = 8          # Micro Composer 保留轮数
 MANUAL_COMPOSER_MAX_CHARS = 32768       # 手动压缩最大字符数
 
 # ============================================================
