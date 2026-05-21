@@ -1180,6 +1180,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await fetchJsonWithTimeout('/api/sessions/list', 5000);
             state.sessions = data.saved_files || [];
             
+            // 按修改时间排序（最新在最前）
+            state.sessions.sort(function(a, b) {
+                var ta = a.timestamp || '';
+                var tb = b.timestamp || '';
+                // 把 "2026-05-22 01:26:14" 转为时间戳数字比较
+                return new Date(tb.replace(' ', 'T')).getTime() - new Date(ta.replace(' ', 'T')).getTime();
+            });
+            
             const searchText = (el.sessionSearch.value || '').toLowerCase().trim();
             
             // 过滤已保存文件
