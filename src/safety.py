@@ -3,13 +3,14 @@
 # ============================================================
 # 提供命令安全性检测功能，防止系统遭受破坏性操作。
 # 包含高危命令拦截和警告机制。
+# 高危命令不再直接拦截，而是要求用户确认后放行。
 # ============================================================
 
 import re
 
 # -----------------------------------------------------------
 # 高危命令模式（Windows 环境）
-# 匹配到的命令将被阻止执行
+# 匹配到的命令将被阻止执行（除非用户确认）
 # -----------------------------------------------------------
 HIGH_RISK_PATTERNS = [
     # 删除/格式化类
@@ -79,10 +80,22 @@ WARN_PATTERNS = [
 
 
 def check_command_safety(cmd: str) -> dict:
-    """检测命令安全性，返回 {'safe': bool, 'reason': str, 'warn': bool}"""
+    """检测命令安全性
+
+    返回字段说明：
+        - safe: bool          — False 表示需要用户确认或已拦截
+        - reason: str         — 提示信息
+        - warn: bool          — True 表示是警告级命令（非高危）
+        - requires_confirmation: bool — True 表示需要用户确认才能放行
+
+    返回值示例：
+        {"safe": True, "warn": False, "reason": "", "requires_confirmation": False}
+        {"safe": False, "warn": False, "reason": "...", "requires_confirmation": True}
+        {"safe": True, "warn": True, "reason": "...", "requires_confirmation": False}
+    """
     cmd_lower = cmd.lower().strip()
 
-    # 检查高危命令
+    # 检查高危命令 — 需要用户确认
     for pattern in HIGH_RISK_PATTERNS:
         if re.search(pattern, cmd_lower, re.IGNORECASE):
             return {
@@ -90,18 +103,26 @@ def check_command_safety(cmd: str) -> dict:
                 "reason": (
                     f"⛔ 检测到高危操作！匹配规则: `{pattern}`\n"
                     f"   命令: `{cmd[:200]}`\n"
-                    f"   该操作可能对系统造成严重破坏，已阻止执行。\n"
-                    f"   如需执行，请手动在终端中操作。"
-                )
+                    f"   该操作可能对系统造成严重破坏。\n"
+                    f"   🔐 如确认要执行，请使用 run_cmd(cmd=..., confirm=True) 放行。"
+                ),
+                "requires_confirmation": True,
+                "warn": False
             }
 
-    # 检查需要警告的命令
+    # 检查需要警告的命令 — 自动放行，但提示用户
     for pattern in WARN_PATTERNS:
         if re.search(pattern, cmd_lower, re.IGNORECASE):
             return {
                 "safe": True,
                 "warn": True,
-                "reason": f"⚠️ 警告：该命令 (`{cmd[:150]}`) 可能影响系统运行，请确认是否继续。"
+                "reason": f"⚠️ 警告：该命令 (`{cmd[:150]}`) 可能影响系统运行，已自动放行。",
+                "requires_confirmation": False
             }
 
-    return {"safe": True, "warn": False, "reason": ""}
+    return {
+        "safe": True,
+        "warn": False,
+        "reason": "",
+        "requires_confirmation": False
+    }

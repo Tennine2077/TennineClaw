@@ -24,11 +24,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_cmd",
-            "description": "执行系统命令（带安全检测）",
+            "description": "执行系统命令（带安全检测 + 高危确认）。高危命令需用户确认后设置 confirm=True 放行",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "cmd": {"type": "string", "description": "要执行的命令"}
+                    "cmd": {"type": "string", "description": "要执行的命令"},
+                    "confirm": {"type": "boolean", "description": "是否确认高危操作（设为 true 表示用户已确认风险，高危命令将放行）"}
                 },
                 "required": ["cmd"]
             }
@@ -134,11 +135,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "delete_file",
-            "description": "删除文件或空目录",
+            "description": "删除文件或空目录（系统路径保护，需 force=True 强制删除）",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "description": "文件/目录路径"}
+                    "path": {"type": "string", "description": "文件/目录路径"},
+                    "force": {"type": "boolean", "description": "是否强制删除（跳过系统路径保护检查，设为 true 可删除系统路径下的内容）"}
                 },
                 "required": ["path"]
             }

@@ -109,8 +109,11 @@ def build_system_prompt(mode: int = MODE_SMART) -> str:
 删除文件  →  `delete_file`
 
 ## ⚠️ 安全机制
-1. **高危命令拦截**：系统会自动检测并阻止 rm -rf /、format、dd 等危险操作
-2. **路径保护**：delete_file 不允许删除 Windows/Program Files 等系统路径
+1. **高危命令确认**：检测到高危命令（如 rm -rf、format、dd 等）时，系统不会直接阻止，
+   而是返回确认提示。**请向用户展示风险说明，并询问是否确认执行**。
+   用户确认后，调用 `run_cmd(cmd=..., confirm=True)` 放行执行。
+2. **路径保护**：delete_file 默认不允许删除 Windows/Program Files 等系统路径。
+   如需强制删除，请向用户说明风险并获得确认后，调用 `delete_file(path=..., force=True)` 放行。
 3. **输出限制**：长输出会自动截断，防止信息过载
 4. **超时保护**：命令执行超过 30 秒会自动终止
 

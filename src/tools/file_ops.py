@@ -1,7 +1,7 @@
 # ============================================================
 # TennineClaw - 文件操作工具
 # ============================================================
-# 包含：读取文件、写入文件、删除文件（带安全路径检查）
+# 包含：读取文件、写入文件、删除文件（带安全路径检查 + 用户确认）
 # ============================================================
 
 import os
@@ -60,17 +60,19 @@ def tool_write_file(path: str = "", content: str = "") -> str:
         return f"异常: {e}"
 
 
-def tool_delete_file(path: str = "") -> str:
-    """删除文件或空目录（附带系统关键路径保护）
+def tool_delete_file(path: str = "", force: bool = False) -> str:
+    """删除文件或空目录（附带系统关键路径保护 + 用户确认）
 
     安全删除文件或空目录。对系统关键路径（如 C:\\Windows, C:\\Program Files
     及其子目录）实施删除拦截保护。
+    当 force=True 时，跳过系统路径保护检查，允许删除。
 
     Args:
         path: 要删除的文件或空目录路径
+        force: 是否强制删除（跳过系统路径保护检查）
 
     Returns:
-        删除成功或失败信息
+        删除成功或失败信息；系统路径保护被触发时返回确认提示
     """
     if not path:
         return "错误：路径不能为空"
@@ -86,11 +88,28 @@ def tool_delete_file(path: str = "") -> str:
             "C:\\Program Files",
             "C:\\Program Files (x86)",
         ]
+
+        # 检测系统路径保护
+        is_system_path = False
+        matched_sys_dir = ""
         for sys_dir in system_dirs:
             norm_sys = os.path.normpath(sys_dir).lower()
             norm_path = os.path.normpath(abs_path).lower()
             if norm_path == norm_sys or norm_path.startswith(norm_sys + os.sep):
-                return f"❌ 安全拦截: 不允许删除系统关键路径 [{sys_dir}] 下的内容"
+                is_system_path = True
+                matched_sys_dir = sys_dir
+                break
+
+        if is_system_path:
+            if force:
+                # 用户已确认强制删除，跳过保护
+                pass
+            else:
+                return (
+                    f"⛔ 安全保护：检测到要删除系统关键路径 [{matched_sys_dir}] 下的内容\n"
+                    f"   路径: `{path}`\n"
+                    f"   🔐 如确认要删除，请调用 `delete_file(path=..., force=True)` 执行。"
+                )
 
         if os.path.isdir(abs_path):
             if os.listdir(abs_path):
@@ -150,9 +169,7 @@ def tool_delete_file_compat(args: dict = None) -> str:
     """
     if args is None:
         args = {}
-    return tool_delete_file(path=args.get("path", ""))
-
-
-
-
-
+    return tool_delete_file(
+        path=args.get("path", ""),
+        force=args.get("force", False)
+    )
