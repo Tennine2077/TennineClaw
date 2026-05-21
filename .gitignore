@@ -67,3 +67,7 @@ htmlcov/
 # 临时文件
 temp/
 *.tmp
+_invest_out/
+_*.py
+_*.txt
+_*.md

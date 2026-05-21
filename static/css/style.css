@@ -1662,3 +1662,27 @@ html, body {
     }
 }
 
+
+/* ── 当前角色显示 ── */
+.role-card {
+    text-align: center;
+    padding: 12px 8px;
+}
+.role-icon {
+    font-size: 36px;
+    margin-bottom: 6px;
+}
+.role-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.role-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.role-empty {
+    padding: 8px 0;
+}

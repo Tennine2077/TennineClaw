@@ -2,7 +2,7 @@
 
 > Intelligent Terminal Assistant · AI-Powered Code Analysis & Task Execution Platform
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
@@ -16,6 +16,7 @@ TennineClaw is a feature-rich AI programming assistant web platform, supporting 
 
 | Date | Version | Description |
 |------|---------|-------------|
+| May 22, 2026 | v1.1.0 | Custom role system (personas/ dynamic scanning), skill management modal (add/delete/toggle), personality template dynamic loading, soul.md soul definition, role switching & skill sync bug fixes |
 | May 19, 2026 | v1.0.0 | First official release: Web UI (FastAPI + SSE Streaming), 19 tools, built-in Composer context compression, session management, Smart/Plan dual modes |
 
 ---
@@ -33,6 +34,9 @@ TennineClaw is a feature-rich AI programming assistant web platform, supporting 
 | 💬 **Session Management** | Auto file saving, support for grouping, searching, renaming |
 | 🧩 **Context Compression** | Auto/Manual/Micro compression to prevent Token overflow |
 | 📊 **Token Monitoring** | Real-time display of input/output Token counts and ratios |
+| 🎭 **Custom Roles** | Dynamic role loading from personas/ directory, complete personality definitions (OCEAN Big Five, language style, behavior preferences) + soul.md soul definition |
+| 🛠️ **Skill Management Modal** | Streamlined skill panel with management button, opens independent modal for skill toggling, adding (name+description+guide), and deleting custom skills |
+| 🧩 **Dynamic Template Scanning** | Built-in templates exported to personas/ directory, all roles auto-discovered from filesystem, no hardcoding required |
 | 🌓 **Theme Switching** | Dark/Light theme support |
 
 ---
@@ -270,6 +274,36 @@ MIT License
 ---
 
 ## 📝 Changelog
+
+### v1.1.0 (May 22, 2026)
+
+#### 🎭 Custom Role System
+- New: personas/ directory dynamic scanning, auto-discover all roles
+- New: Custom roles support soul.md soul definition file
+- New: Built-in roles (Strict Engineer, Creative Geek, Efficient Assistant) exported to personas/ directory
+- New: Default role Tennine (🎀) — owner's personal AI assistant spirit
+- Optimization: Compact horizontal role card layout
+- Fix: Bidirectional role switching, no more deadlocks
+
+#### 🛠️ Skill Management Refactoring
+- New: Skill management modal (click "⚙️ Manage Skills" to open independent window)
+- New: Skill creation form (name + description + Guide)
+- New: Custom skills can be deleted, built-in skills cannot
+- New: Default skills auto-load
+- Optimization: Skill panel streamlined to just title + manage button
+
+#### 🧩 Personality System Improvements
+- Fix: `list_personality_templates()` dynamically scans personas/ directory
+- Fix: `get_personality_template()` correctly filters unknown fields (e.g., learning_priority)
+- Fix: `load_profile()` triple fallback (profile_id → flat file → directory scan)
+- Fix: `apply_personality_template()` checks `apply_template()` return value
+- Fix: Backend lock timeout 1s → 10s, preventing 423 race conditions
+
+#### ⚡ Performance & Code Cleanup
+- Optimization: Frontend `applyRole()` uses template cache, reducing network requests
+- Cleanup: Removed 6 unused functions
+- Cleanup: Deleted backup files, pycache, outdated plan.md
+- Cleanup: Archived old session records
 
 ### v1.0.0 (May 19, 2026)
 

@@ -1,0 +1,17 @@
+{
+  "id": "skill_cmd",
+  "name": "Shell 指挥官",
+  "icon": "💻",
+  "type": "active",
+  "tier": "basic",
+  "short_description": "精通系统命令执行，高效完成各类命令行操作",
+  "tags": [
+    "命令",
+    "系统"
+  ],
+  "associated_tools": [
+    "run_cmd"
+  ],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

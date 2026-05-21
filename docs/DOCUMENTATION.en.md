@@ -1,6 +1,6 @@
 # TennineClaw Project Documentation
 
-> **Version**: 1.0.0
+> **Version**: 1.1.0
 > **Language**: English | [🇨🇳 中文](DOCUMENTATION.md)
 > **Description**: Intelligent Terminal Assistant — AI-Powered Code Analysis & Task Execution Web Platform
 > **License**: MIT License
@@ -32,6 +32,11 @@
    - [3.17 `tools/info_ops.py` — Info Query Tool](#317-toolsinfo_opspy--info-query-tool)
    - [3.18 `tools/search_ops.py` — Search & Replace Tool](#318-toolssearch_opspy--search--replace-tool)
    - [3.19 `tools/git_ops.py` — Git Operations Tool](#319-toolsgit_opspy--git-operations-tool)
+   - [3.20 `personality_models.py` — Personality Data Models](#320-personality_modelspy--personality-data-models)
+   - [3.21 `personality_engine.py` — Personality Engine](#321-personality_enginepy--personality-engine)
+   - [3.22 `skill_models.py` — Skill Data Models](#322-skill_modelspy--skill-data-models)
+   - [3.23 `skill_engine.py` — Skill Engine](#323-skill_enginepy--skill-engine)
+   - [3.24 `skill_loader.py` — Skill Loader](#324-skill_loaderpy--skill-loader)
 4. [Data Flow](#4-data-flow)
 
 ---
@@ -113,7 +118,7 @@ Prompt Optimization (prompt_optimizer.py) → System prompt injection
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `__version__` | `"1.0.0"` | Current version, referenced by API responses and frontend display |
+| `__version__` | `"1.1.0"` | Current version, referenced by API responses and frontend display |
 | `__description__` | `"Intelligent Terminal Assistant"` | Project description |
 
 ### 3.2 `config.py` — Global Configuration

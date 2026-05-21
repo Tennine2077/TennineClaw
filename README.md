@@ -2,7 +2,7 @@
 
 > 智能终端助手 · 基于 AI 的代码分析与任务执行平台
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
@@ -16,6 +16,7 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 
 | 日期 | 版本 | 说明 |
 |------|------|------|
+| 2026年5月22日 | v1.1.0 | 自定义角色系统（personas/目录动态扫描）、技能管理弹窗（增删/开关）、人格模板动态加载、soul.md 灵魂定义、修复角色切换与技能同步 Bug |
 | 2026年5月19日 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE 流式)、19 个工具、内置 Composer 上下文压缩、会话管理、Smart/Plan 双模式 |
 
 ---
@@ -33,6 +34,9 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 | 💬 **会话管理** | 自动文件保存，支持分组、搜索、重命名 |
 | 🧩 **上下文压缩** | 自动/手动/微压缩，防止 Token 溢出 |
 | 📊 **Token 监控** | 实时显示输入/输出 Token 数量及占比 |
+| 🎭 **自定义角色** | 支持通过 personas/ 目录动态加载角色，包含完整人格定义（OCEAN五因素、语言风格、行为偏好）+ soul.md 灵魂定义 |
+| 🛠️ **技能管理弹窗** | 技能面板精简为管理按钮，点击弹出独立窗口，支持技能开关、新增（名称+描述+guide）、删除自定义技能 |
+| 🧩 **动态模板扫描** | 内置模板已导出到 personas/ 目录，一切角色由目录自动发现，无需硬编码 |
 | 🌓 **主题切换** | 深色/浅色主题 |
 
 ---
@@ -270,6 +274,36 @@ MIT License
 ---
 
 ## 📝 更新日志
+
+### v1.1.0（2026年5月22日）
+
+#### 🎭 自定义角色系统
+- 新增：personas/ 目录动态扫描，自动发现所有角色
+- 新增：自定义角色支持 soul.md 灵魂定义文件
+- 新增：内置角色（严谨工程师、创意极客、高效助手）导出到 personas/ 目录
+- 新增：默认角色 Tennine（🎀）— 主人的专属 AI 助手精灵
+- 优化：角色卡片紧凑水平布局，节省空间
+- 修复：角色切换双向可逆，不再卡死
+
+#### 🛠️ 技能管理重构
+- 新增：技能管理弹窗（点击「⚙️ 管理技能」弹出独立窗口）
+- 新增：技能新增表单（技能名称 + 描述 + Guide）
+- 新增：自定义技能可删除，内置技能不可删除
+- 新增：默认技能自动加载
+- 优化：技能面板精简为仅 Title + 管理按钮
+
+#### 🧩 人格系统改进
+- 修复：`list_personality_templates()` 动态扫描 personas/ 目录
+- 修复：`get_personality_template()` 正确过滤未知字段（如 learning_priority）
+- 修复：`load_profile()` 三次回退查找（profile_id → 扁平文件 → 目录扫描）
+- 修复：`apply_personality_template()` 检查 `apply_template()` 返回值
+- 修复：后端锁超时从 1s → 10s，避免 423 竞争冲突
+
+#### ⚡ 性能与代码清理
+- 优化：前端 `applyRole()` 使用模板缓存，减少网络请求
+- 清理：移除 6 个未使用的函数
+- 清理：删除备份文件、pycache、过期 plan.md
+- 清理：归档旧会话记录
 
 ### v1.0.0（2026年5月19日）
 

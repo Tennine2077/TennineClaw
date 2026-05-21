@@ -7,40 +7,6 @@
 
 from .config import MAX_CTX_TOKENS
 
-
-def show_token_usage(usage=None, prompt_tokens: int = None, completion_tokens: int = None, label="本次"):
-    """显示 token 消耗信息
-    
-    Args:
-        usage: API 返回的 usage 对象（可选）
-        prompt_tokens: 直接传入 prompt token 数（usage 为 None 时使用）
-        completion_tokens: 直接传入 completion token 数（usage 为 None 时使用）
-    """
-    if usage is not None:
-        prompt_tk = usage.prompt_tokens or 0
-        completion_tk = usage.completion_tokens or 0
-        total_tk = usage.total_tokens or 0
-    elif prompt_tokens is not None:
-        prompt_tk = prompt_tokens
-        completion_tk = completion_tokens or 0
-        total_tk = prompt_tk + completion_tk
-    else:
-        return ""
-
-    remaining = MAX_CTX_TOKENS - prompt_tk
-    remaining = max(remaining, 0)
-    pct = (prompt_tk / MAX_CTX_TOKENS) * 100
-
-    lines = []
-    lines.append(f"\n📊 [{label} Token 统计]")
-    lines.append(f"   📥 输入 Token (上下文累计): {prompt_tk:,}")
-    lines.append(f"   📤 输出 Token (本轮生成):   {completion_tk:,}")
-    lines.append(f"   📊 本轮合计:                {total_tk:,}")
-    lines.append(f"   💾 剩余上下文空间:          {remaining:,} / {MAX_CTX_TOKENS:,}")
-    lines.append(f"   📈 上下文占用:              {pct:.1f}%")
-    return "\n".join(lines)
-
-
 def get_token_stats_text(usage=None, prompt_tokens: int = None, completion_tokens: int = None, label="本次"):
     """获取 Token 统计文本（用于 Gradio 界面展示）
     

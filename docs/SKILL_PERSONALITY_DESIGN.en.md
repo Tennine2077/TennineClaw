@@ -2,7 +2,7 @@
 
 > **Language**: English | [🇨🇳 中文](SKILL_PERSONALITY_DESIGN.md)
 > **Project**: TennineClaw
-> **Version**: v1.0.0 → v1.1.0 (Planned)
+> **Version**: v1.1.0 (Implemented)
 > **Design Goal**: Empower the AI Agent with a growable, composable Skill system, and cross-session consistent personality memory and behavioral traits
 > **Design Principles**: Modular, extensible, low-coupling, progressive rollout
 

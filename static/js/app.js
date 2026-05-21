@@ -724,6 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // 清空消息区域
             el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
             el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
+            // Reset role display - user will select manually
+            if (typeof updateRoleDisplay === 'function') { updateRoleDisplay(null); }
             
             // 清空输入框（新会话）
             el.chatInput.value = '';
@@ -953,6 +955,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 清除当前 DOM
         el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
         el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
+            // Reset role display - user will select manually
+            if (typeof updateRoleDisplay === 'function') { updateRoleDisplay(null); }
         el.chatInput.value = '';
         
         try {
@@ -1034,6 +1038,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 清除旧消息并完整渲染
                             el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
                             el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
+            // Reset role display - user will select manually
+            if (typeof updateRoleDisplay === 'function') { updateRoleDisplay(null); }
                             if (finalMsgs.length > 0) {
                                 await renderMessages(finalMsgs);
                                 el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
@@ -1098,6 +1104,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. 清除当前显示的消息
             el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
             el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
+            // Reset role display - user will select manually
+            if (typeof updateRoleDisplay === 'function') { updateRoleDisplay(null); }
 
             // 3. 获取会话消息并渲染
             const msgData = await API.getSessionMessages(state.activeSessionId);
@@ -1713,5 +1721,750 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExistingMessages();  // 加载已有会话消息（多标签页同步）
     autoResizeTextarea();
     el.chatInput.focus();
+    
+    // 初始化默认角色 & 技能
+    selectRoleForNewSession();
+    setTimeout(function() {
+        loadSkillsForRole('Tennine');
+    }, 500);
 
 });
+
+// ============================================================
+
+
+
+
+async function selectRoleForNewSession() {
+    try {
+        const r = await fetch('/api/personality/templates/all');
+        const data = await r.json();
+        const templates = data.data || data.templates || {};
+        const names = Object.keys(templates);
+
+        if (names.length === 0) {
+            updateRoleDisplay({
+                roleId: 'default',
+                roleName: '默认助手',
+                roleIcon: '🧑',
+                roleDesc: '默认角色'
+            });
+            return;
+        }
+
+        let selected = null;
+        if (templates['Tennine']) {
+            selected = templates['Tennine'];
+        } else if (templates['default']) {
+            selected = templates['default'];
+        } else {
+            selected = templates[names[0]];
+        }
+        
+        if (selected) {
+            var roleName = selected.name || names[0];
+            updateRoleDisplay({
+                roleId: selected.id || names[0],
+                roleName: roleName,
+                roleIcon: selected.icon || '🧑',
+                roleDesc: selected.description || ''
+            });
+            applyRole(roleName);
+        }
+    } catch (e) {
+        console.error('selectRoleForNewSession error:', e);
+        updateRoleDisplay({
+            roleId: 'default',
+            roleName: '默认助手',
+            roleIcon: '🧑',
+            roleDesc: '默认角色'
+        });
+    }
+}
+
+
+async function showRoleSelector() {
+    try {
+        const r = await fetch('/api/personality/templates/all');
+        const data = await r.json();
+        const templates = data.data || data.templates || {};
+        const names = Object.keys(templates);
+        
+        if (names.length === 0) {
+            showToast('没有可用的角色卡', 'error');
+            return;
+        }
+        
+        // Build role selection HTML
+        var q1 = "'";
+        let html = '<div style="display:flex; flex-direction:column; gap:6px; max-height:400px; overflow-y:auto;">';
+        names.forEach(function(name) {
+            const t = templates[name];
+            const isBuiltin = t.is_builtin === true;
+            html += '<div style="display:flex; align-items:center; gap:6px; padding:7px 8px; border-radius:6px; margin:2px 0; cursor:pointer; border:1px solid var(--border-color);" onclick="applyRole(' + q1 + name + q1 + ')">';
+            html += '<span style="font-size:20px;">' + (t.icon || '🧑') + '</span>';
+            html += '<div style="flex:1; min-width:0;">';
+            html += '<div style="font-size:13px; font-weight:600; color:var(--text-primary);">' + name + '</div>';
+            html += '<div style="font-size:10px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (t.description || '') + '</div>';
+            html += '</div>';
+            if (isBuiltin) {
+                html += '<span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(99,102,241,0.12); color:#818cf8;">内置</span>';
+            } else {
+                html += '<span style="cursor:pointer; font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.12); color:#ef4444;" onclick="event.stopPropagation();deleteRoleTemplate(' + q1 + name + q1 + ')">✖ 删除</span>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        html += '<div style="cursor:pointer; width:100%; margin-top:8px; padding:5px; border:1px dashed var(--border-color); border-radius:5px; background:transparent; color:var(--accent-primary); font-size:11px; text-align:center;" onclick="showAddRoleForm()">+ 添加自定义角色</div>';
+        
+        showModal('🎭 选择角色卡', html, [
+            { text: '关闭', class: 'modal-btn-cancel', action: closeModal }
+        ]);
+    } catch (e) {
+        console.error('showRoleSelector error:', e);
+        showToast('加载角色列表失败', 'error');
+    }
+}
+
+
+
+var currentRoleState = currentRoleState || {
+    roleId: 'default',
+    roleName: '默认助手',
+    roleIcon: '🧑',
+    roleDesc: '专业、高效、友好的智能终端助手',
+};
+
+function updateRoleDisplay(role) {
+    if (!role) role = currentRoleState;
+    else currentRoleState = role;
+
+    const card = document.getElementById('roleCard');
+    const empty = document.getElementById('roleEmpty');
+    const icon = document.getElementById('roleIcon');
+    const name = document.getElementById('roleName');
+    if (!card || !empty) return;
+
+    if (role && role.roleId) {
+        card.style.display = 'flex';
+        empty.style.display = 'none';
+        if (icon) icon.textContent = role.roleIcon || '🧑';
+        if (name) name.textContent = role.roleName || '未知角色';
+    } else {
+        card.style.display = 'none';
+        empty.style.display = 'block';
+    }
+}
+
+
+async function loadTemplateCache() {
+    try {
+        var r = await fetch('/api/personality/templates/all');
+        var data = await r.json();
+        __templateCache = data.data || data.templates || {};
+    } catch(e) {
+        console.error('loadTemplateCache error:', e);
+    }
+}
+
+
+
+function showAddRoleForm() {
+    closeModal();
+    const html = '<div style="display:flex; flex-direction:column; gap:8px;">' +
+        '<label style="font-size:12px; color:var(--text-secondary);">角色名称</label>' +
+        '<input id="newRoleName" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="请输入角色名称">' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:2px;">角色描述</label>' +
+        '<input id="newRoleDesc" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="简短描述该角色">' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:2px;">图标（可选）</label>' +
+        '<input id="newRoleIcon" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="默认 🧑" value="🧑">' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:4px;">角色灵魂 (soul.md) <span style="color:var(--text-muted); font-size:10px;">定义角色的核心特质、性格、做事风格</span></label>' +
+        '<textarea id="newRoleSoul" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:12px; min-height:120px; resize:vertical; font-family:inherit;" placeholder="# 角色名：\n\n## 🌟 核心身份\n\n## 🎯 做事风格\n\n## 💭 核心信念\n\n## 🧠 性格特征"></textarea>' +
+        '</div>';
+    showModal('➕ 添加自定义角色', html, [
+        { text: '取消', class: 'modal-btn-cancel', action: closeModal },
+        { text: '创建角色', class: 'modal-btn-primary', action: createNewRole }
+    ]);
+    setTimeout(function() {
+        const inp = document.getElementById('newRoleName');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+async function createNewRole() {
+    const name = document.getElementById('newRoleName')?.value?.trim();
+    if (!name) { showToast('角色名称不能为空', 'error'); return; }
+    const desc = document.getElementById('newRoleDesc')?.value?.trim() || '';
+    const icon = document.getElementById('newRoleIcon')?.value?.trim() || '🧑';
+    const soulMd = document.getElementById('newRoleSoul')?.value?.trim() || '';
+    try {
+        const r = await fetch('/api/personality/templates/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, description: desc, icon: icon, soul_md: soulMd })
+        });
+        const data = await r.json();
+        if (data.success) {
+            showToast('✅ 角色「' + name + '」创建成功');
+            closeModal();
+            showRoleSelector();
+        } else {
+            showToast('❌ 创建失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('createNewRole error:', e);
+        showToast('创建角色失败', 'error');
+    }
+}
+
+async function deleteRoleTemplate(name) {
+    if (name === 'Tennine') {
+        showToast('❌ Tennine 是默认角色，不可删除', 'error');
+        return;
+    }
+    if (!confirm('确定要删除角色「' + name + '」吗？')) return;
+    try {
+        const r = await fetch('/api/personality/templates/custom/' + encodeURIComponent(name), {
+            method: 'DELETE'
+        });
+        const data = await r.json();
+        if (data.success) {
+            showToast('✅ 角色「' + name + '」已删除');
+            closeModal();
+            showRoleSelector();
+        } else {
+            showToast('❌ 删除失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('deleteRoleTemplate error:', e);
+        showToast('删除角色失败', 'error');
+    }
+}
+
+// Global template cache to avoid re-fetching
+var __templateCache = {};
+
+// Global template cache
+var __templateCache = {};
+
+async function applyRole(roleName) {
+    console.log('[applyRole] Starting for:', roleName);
+    closeModal();
+    try {
+        // Check cache
+        var tmpl = __templateCache[roleName];
+        console.log('[applyRole] Cache hit:', !!tmpl);
+        
+        if (!tmpl) {
+            console.log('[applyRole] Fetching templates...');
+            var r = await fetch('/api/personality/templates/all');
+            var data = await r.json();
+            var templates = data.data || data.templates || {};
+            __templateCache = templates;
+            tmpl = templates[roleName];
+            console.log('[applyRole] After fetch, found:', !!tmpl, 'keys:', Object.keys(templates).slice(0,5));
+        }
+        
+        if (!tmpl) {
+            console.error('[applyRole] Template not found:', roleName);
+            showToast('角色卡不存在: ' + roleName, 'error');
+            return;
+        }
+        
+        // POST to apply
+        console.log('[applyRole] POSTing to /api/personality/template');
+        var applyR = await fetch('/api/personality/template', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: roleName })
+        });
+        console.log('[applyRole] Response status:', applyR.status);
+        var applyData = await applyR.json();
+        console.log('[applyRole] Response data:', JSON.stringify(applyData));
+        
+        if (applyData.success) {
+            console.log('[applyRole] Success! Updating display');
+            updateRoleDisplay({
+                roleId: roleName,
+                roleName: roleName,
+                roleIcon: tmpl.icon || '🧑',
+                roleDesc: tmpl.description || ''
+            });
+            showToast('✅ 已切换到角色卡: ' + roleName);
+            
+            if (typeof loadSkillsForRole === 'function') {
+                loadSkillsForRole(roleName);
+            }
+        } else {
+            var errMsg = applyData.detail || applyData.message || '未知错误';
+            console.error('[applyRole] Backend error:', errMsg);
+            if (errMsg.includes('忙') || applyR.status === 423) {
+                showToast('⏳ 服务器处理中，请稍后再试', 'warning');
+            } else {
+                showToast('❌ ' + errMsg, 'error');
+            }
+        }
+    } catch (e) {
+        console.error('[applyRole] Exception:', e);
+        showToast('应用角色卡失败: ' + e.message, 'error');
+    }
+}
+
+
+
+
+
+
+
+
+// ============================================================
+// Skills Management (Right Sidebar)
+// ============================================================
+
+let currentSkillsState = {
+    skills: [],
+    equippedIds: [],
+};
+
+async function loadSkillsForRole(roleName) {
+    try {
+        // Load skills from API
+        const r = await fetch('/api/skills/registry');
+        const data = await r.json();
+        const skillsList = data.data || [];
+        
+        // Load equipped skills
+        const e = await fetch('/api/personality/equipped-skills');
+        const eqData = await e.json();
+        const equippedIds = eqData.equipped_ids || [];
+        
+        currentSkillsState.skills = skillsList;
+        currentSkillsState.equippedIds = equippedIds;
+        
+        // Auto-activate built-in default skills
+        skillsList.forEach(function(sk) {
+            if (sk.is_builtin && currentSkillsState.equippedIds.indexOf(sk.id) < 0) {
+                currentSkillsState.equippedIds.push(sk.id);
+                // Async API call to activate
+                fetch('/api/skills/' + sk.id + '/activate', { method: 'POST' }).catch(function(){});
+                fetch('/api/personality/equip-skill/' + sk.id, { method: 'POST' }).catch(function(){});
+            }
+        });
+        
+        renderSkillsCompact();
+    } catch (e) {
+        console.error('loadSkillsForRole error:', e);
+    }
+}
+
+
+
+
+function autoEquipDefaultSkills() {
+    // Auto-activate all built-in skills that are not yet equipped
+    var skills = currentSkillsState.skills || [];
+    var equipped = currentSkillsState.equippedIds || [];
+    var changed = false;
+    
+    skills.forEach(function(s) {
+        if (s.is_builtin && equipped.indexOf(s.id) < 0) {
+            // Activate this built-in skill
+            fetch('/api/skills/' + s.id + '/activate', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        return fetch('/api/personality/equip-skill/' + s.id, { method: 'POST' });
+                    }
+                })
+                .then(function(r) { if(r) return r.json(); })
+                .then(function(data) {
+                    if (data && data.success) {
+                        if (currentSkillsState.equippedIds.indexOf(s.id) < 0) {
+                            currentSkillsState.equippedIds.push(s.id);
+                        }
+                    }
+                })
+                .catch(function(e) {
+                    console.error('autoEquipDefaultSkills error for', s.id, e);
+                });
+            changed = true;
+        }
+    });
+}
+
+function openSkillManagerModal() {
+    // Load skills data from APIs
+    Promise.all([
+        fetch('/api/skills/registry').then(function(r) { return r.json(); }),
+        fetch('/api/personality/equipped-skills').then(function(r) { return r.json(); })
+    ])
+    .then(function(results) {
+        var skillsData = results[0];
+        var eqData = results[1];
+        currentSkillsState.skills = skillsData.data || [];
+        currentSkillsState.equippedIds = eqData.equipped_ids || [];
+        renderSkillManagerModal();
+    })
+    .catch(function(e) {
+        console.error('openSkillManagerModal error:', e);
+        showToast('加载技能列表失败', 'error');
+    });
+}
+
+function renderSkillManagerModal() {
+    var skills = currentSkillsState.skills || [];
+    var equippedIds = currentSkillsState.equippedIds || [];
+    var sq = "'";
+    
+    var html = '';
+    
+    // Section 1: Currently equipped skills badges
+    var equippedSkills = skills.filter(function(s) { return equippedIds.indexOf(s.id) >= 0; });
+    if (equippedSkills.length > 0) {
+        html += '<div style="margin-bottom:6px; font-size:11px; color:var(--text-secondary); font-weight:600;">✅ 当前已启用 (' + equippedSkills.length + ')</div>';
+        html += '<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px;">';
+        equippedSkills.forEach(function(s) {
+            html += '<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:10px; background:rgba(34,197,94,0.15); color:#22c55e; font-size:11px;">' + (s.icon || '⚡') + ' ' + (s.name || s.id) + '</span>';
+        });
+        html += '</div>';
+    } else {
+        html += '<div style="margin-bottom:10px; font-size:11px; color:var(--text-muted);">❌ 当前未启用任何技能</div>';
+    }
+    
+    // Section 2: All skills list
+    html += '<div style="font-size:11px; color:var(--text-secondary); font-weight:600; margin-bottom:4px; border-top:1px solid var(--border-color); padding-top:8px;">📋 全部技能</div>';
+    html += '<div style="max-height:280px; overflow-y:auto;">';
+    
+    if (skills.length === 0) {
+        html += '<div style="text-align:center; padding:12px; color:var(--text-muted); font-size:11px;">暂无可用技能</div>';
+    } else {
+        skills.forEach(function(s) {
+            var isOn = equippedIds.indexOf(s.id) >= 0;
+            var isBuiltin = s.is_builtin === true;
+            html += '<div style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:4px; margin:1px 0; border:1px solid transparent;">';
+            html += '<div style="cursor:pointer; display:flex; align-items:center; gap:6px; flex:1; min-width:0;" onclick="toggleSkillInModal(' + sq + s.id + sq + ')">';
+            html += '<span>' + (s.icon || '⚡') + '</span>';
+            html += '<span style="flex:1; font-size:12px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (s.name || s.id) + '</span>';
+            html += '<span style="font-size:10px; padding:2px 8px; border-radius:10px; flex-shrink:0; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.15)') + '; color:' + (isOn ? '#22c55e' : '#888') + ';">' + (isOn ? '✅ 已启用' : '❌ 禁用') + '</span>';
+            html += '</div>';
+            if (!isBuiltin) {
+                html += '<div style="cursor:pointer; flex-shrink:0; padding:2px 6px; border-radius:3px; background:rgba(239,68,68,0.12); color:#ef4444; font-size:10px;" onclick="deleteCustomSkillFromModal(' + sq + s.id + sq + ',' + sq + (s.name || s.id) + sq + ')">✖</div>';
+            } else {
+                html += '<span style="flex-shrink:0; font-size:9px; color:var(--text-muted);">默认</span>';
+            }
+            html += '</div>';
+        });
+    }
+    html += '</div>';
+    
+    html += '<div style="cursor:pointer; width:100%; margin-top:8px; padding:5px; border:1px dashed var(--border-color); border-radius:5px; background:transparent; color:var(--accent-primary); font-size:11px; text-align:center;" onclick="showAddSkillFormInModal()">+ 创建自定义技能</div>';
+    
+    showModal('⚙️ 技能管理', html, [
+        { text: '关闭', class: 'modal-btn-cancel', action: closeModal }
+    ]);
+}
+
+function toggleSkillInModal(skillId) {
+    var isCurrentlyEquipped = currentSkillsState.equippedIds.indexOf(skillId) >= 0;
+    
+    fetch('/api/skills/' + skillId + '/activate', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                showToast('技能切换失败', 'error');
+                return;
+            }
+            var method = isCurrentlyEquipped ? 'DELETE' : 'POST';
+            return fetch('/api/personality/equip-skill/' + skillId, { method: method });
+        })
+        .then(function(r) { if(r) return r.json(); })
+        .then(function(data) {
+            if (data && !data.success) {
+                showToast('技能同步失败', 'error');
+                return;
+            }
+            var idx = currentSkillsState.equippedIds.indexOf(skillId);
+            if (idx >= 0) {
+                currentSkillsState.equippedIds.splice(idx, 1);
+            } else {
+                currentSkillsState.equippedIds.push(skillId);
+            }
+            renderSkillManagerModal();
+        })
+        .catch(function(e) {
+            console.error('toggleSkillInModal error:', e);
+        });
+}
+
+function showAddSkillFormInModal() {
+    closeModal();
+    var html = '<div style="display:flex; flex-direction:column; gap:8px;">' +
+        '<label style="font-size:12px; color:var(--text-secondary);">技能名称 <span style="color:#ef4444;">*</span></label>' +
+        '<input id="newSkillName" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="请输入技能名称">' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:2px;">技能描述 <span style="color:#ef4444;">*</span></label>' +
+        '<textarea id="newSkillDesc" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:12px; min-height:50px; resize:vertical;" placeholder="描述该技能的功能和用途"></textarea>' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:2px;">技能 Guide <span style="color:#ef4444;">*</span></label>' +
+        '<textarea id="newSkillGuide" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:12px; min-height:80px; resize:vertical; font-family:inherit;" placeholder="编写该技能的指南/使用说明，定义技能的行为逻辑和注意事项"></textarea>' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:2px;">图标（可选）</label>' +
+        '<input id="newSkillIcon" style="padding:7px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="默认 ⚡" value="⚡">' +
+        '</div>';
+    showModal('➕ 创建自定义技能', html, [
+        { text: '取消', class: 'modal-btn-cancel', action: function() { closeModal(); openSkillManagerModal(); } },
+        { text: '创建技能', class: 'modal-btn-primary', action: createNewSkillFromModal }
+    ]);
+    setTimeout(function() {
+        var inp = document.getElementById('newSkillName');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+async function createNewSkillFromModal() {
+    var name = document.getElementById('newSkillName')?.value?.trim();
+    if (!name) { showToast('技能名称不能为空', 'error'); return; }
+    var desc = document.getElementById('newSkillDesc')?.value?.trim();
+    if (!desc) { showToast('技能描述不能为空', 'error'); return; }
+    var guide = document.getElementById('newSkillGuide')?.value?.trim();
+    if (!guide) { showToast('技能 Guide 不能为空', 'error'); return; }
+    var icon = document.getElementById('newSkillIcon')?.value?.trim() || '⚡';
+    try {
+        var r = await fetch('/api/skills/registry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                name: name, 
+                short_description: desc, 
+                icon: icon,
+                guide: guide,
+                detail_content: guide
+            })
+        });
+        var data = await r.json();
+        if (data.success) {
+            showToast('✅ 技能「' + name + '」创建成功');
+            closeModal();
+            openSkillManagerModal();
+        } else {
+            showToast('❌ 创建失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('createNewSkill error:', e);
+        showToast('创建技能失败', 'error');
+    }
+}
+
+async function deleteCustomSkillFromModal(skillId, skillName) {
+    if (!confirm('确定要删除技能「' + skillName + '」吗？')) return;
+    try {
+        var r = await fetch('/api/skills/registry/' + encodeURIComponent(skillId), {
+            method: 'DELETE'
+        });
+        var data = await r.json();
+        if (data.success) {
+            showToast('✅ 技能「' + skillName + '」已删除');
+            var rr = await fetch('/api/skills/registry');
+            var rd = await rr.json();
+            currentSkillsState.skills = rd.data || [];
+            closeModal();
+            openSkillManagerModal();
+        } else {
+            showToast('❌ 删除失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('deleteCustomSkill error:', e);
+        showToast('删除技能失败', 'error');
+    }
+}
+
+function renderSkillsCompact() {
+    const container = document.getElementById('skillsCompactList');
+    const manageBtn = document.getElementById('manageSkillsBtn');
+    if (!container) return;
+    
+    const skills = currentSkillsState.skills || [];
+    const equippedIds = currentSkillsState.equippedIds || [];
+    
+    if (skills.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:8px; color:var(--text-muted); font-size:11px;">暂无可用技能</div>';
+        if (manageBtn) manageBtn.style.display = 'none';
+        return;
+    }
+    
+    let html = '';
+    // Show first 5 skills
+    const showSkills = skills.slice(0, 5);
+    showSkills.forEach(function(s) {
+        const isOn = equippedIds.includes(s.id);
+        html += '<div style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:4px; margin:2px 0;">';
+        html += '<span>' + (s.icon || '\u26a1') + '</span>';
+        html += '<span style="flex:1; font-size:12px; color:var(--text-primary);">' + (s.name || s.id) + '</span>';
+        html += '<span onclick="toggleSkill(\'' + s.id + '\')" style="cursor:pointer; font-size:14px; padding:2px 6px; border-radius:4px; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.2)') + '; color:' + (isOn ? '#22c55e' : '#666') + ';">' + (isOn ? '\u2714\ufe0f' : '\u274c') + '</span>';
+        html += '</div>';
+    });
+    
+    if (skills.length > 5) {
+        html += '<div style="text-align:center; font-size:10px; color:var(--text-muted); padding:2px;">+' + (skills.length - 5) + ' more</div>';
+    }
+    
+    container.innerHTML = html;
+    if (manageBtn) manageBtn.style.display = 'block';
+}
+
+function toggleSkill(skillId) {
+    // Check if currently equipped (local state)
+    const isCurrentlyEquipped = currentSkillsState.equippedIds.indexOf(skillId) >= 0;
+    
+    // Step 1: Toggle in skill engine
+    fetch('/api/skills/' + skillId + '/activate', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                console.warn('Skill engine toggle failed:', data);
+                throw new Error('Skill engine toggle failed');
+            }
+            // Step 2: Sync with personality engine (equip/unequip)
+            const method = isCurrentlyEquipped ? 'DELETE' : 'POST';
+            return fetch('/api/personality/equip-skill/' + skillId, { method: method });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                console.warn('Personality engine sync failed:', data);
+                throw new Error('Personality engine sync failed');
+            }
+            // Step 3: Update local state
+            const idx = currentSkillsState.equippedIds.indexOf(skillId);
+            if (idx >= 0) {
+                currentSkillsState.equippedIds.splice(idx, 1);
+            } else {
+                currentSkillsState.equippedIds.push(skillId);
+            }
+            // Step 4: Re-render UI
+            renderSkillsCompact();
+            renderSkillManager();
+        })
+        .catch(function(e) {
+            console.error('toggleSkill error:', e);
+        });
+}
+
+function toggleSkillManager() {
+    const manager = document.getElementById('skillManager');
+    const btn = document.getElementById('manageSkillsBtn');
+    if (!manager || !btn) return;
+    
+    const isOpen = manager.style.display !== 'none';
+    manager.style.display = isOpen ? 'none' : 'block';
+    btn.textContent = isOpen ? '\u2699\ufe0f \u7ba1\u7406\u6280\u80fd' : '\u2716 \u6536\u8d77';
+    
+    if (!isOpen) {
+        renderSkillManager();
+    }
+}
+
+function renderSkillManager() {
+    const container = document.getElementById('skillManagerList');
+    if (!container) return;
+    
+    const skills = currentSkillsState.skills || [];
+    const equippedIds = currentSkillsState.equippedIds || [];
+    
+    if (skills.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:8px; color:var(--text-muted); font-size:11px;">暂无可用技能</div>' +
+            '<button onclick="showAddSkillForm()" style="width:100%; margin-top:6px; padding:5px; border:1px dashed var(--border-color); border-radius:5px; background:transparent; color:var(--accent-primary); cursor:pointer; font-size:11px;">+ 添加自定义技能</button>';
+        return;
+    }
+    
+    let html = '<div style="margin-bottom:6px; font-size:10px; color:var(--text-muted);">点击技能切换启用/禁用</div>';
+    skills.forEach(function(s) {
+        const isOn = equippedIds.includes(s.id);
+        const isBuiltin = s.is_builtin === true;
+        html += '<div style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:4px; margin:2px 0;">';
+        html += '<div onclick="toggleSkill(\'' + s.id + '\')" style="display:flex; align-items:center; gap:6px; flex:1; cursor:pointer; min-width:0;">';
+        html += '<span>' + (s.icon || '⚡') + '</span>';
+        html += '<span style="flex:1; font-size:12px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (s.name || s.id) + '</span>';
+        html += '<span style="font-size:11px; padding:2px 8px; border-radius:10px; flex-shrink:0; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.15)') + '; color:' + (isOn ? '#22c55e' : '#888') + ';">' + (isOn ? '✔️ 已启用' : '❌ 禁用') + '</span>';
+        html += '</div>';
+        if (!isBuiltin) {
+            html += '<button onclick="event.stopPropagation();deleteCustomSkill(\'' + s.id + '\',\'' + (s.name || s.id) + '\')" style="flex-shrink:0; padding:2px 6px; border:none; border-radius:3px; background:rgba(239,68,68,0.12); color:#ef4444; cursor:pointer; font-size:10px;" title="删除技能">✖</button>';
+        }
+        html += '</div>';
+    });
+    html += '<button onclick="showAddSkillForm()" style="width:100%; margin-top:6px; padding:5px; border:1px dashed var(--border-color); border-radius:5px; background:transparent; color:var(--accent-primary); cursor:pointer; font-size:11px;">+ 添加自定义技能</button>';
+    
+    container.innerHTML = html;
+}
+
+function showAddSkillForm() {
+    // Reuse the personality modal or create a simple prompt
+    const html = '<div style="display:flex; flex-direction:column; gap:10px;">' +
+        '<label style="font-size:12px; color:var(--text-secondary);">技能名称</label>' +
+        '<input id="newSkillName" style="padding:8px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="请输入技能名称">' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:4px;">简短描述</label>' +
+        '<textarea id="newSkillDesc" style="padding:8px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px; min-height:60px; resize:vertical;" placeholder="描述该技能的功能"></textarea>' +
+        '<label style="font-size:12px; color:var(--text-secondary); margin-top:4px;">图标（可选）</label>' +
+        '<input id="newSkillIcon" style="padding:8px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:13px;" placeholder="默认 ⚡" value="⚡">' +
+        '</div>';
+    showModal('➕ 添加自定义技能', html, [
+        { text: '取消', class: 'modal-btn-cancel', action: closeModal },
+        { text: '创建技能', class: 'modal-btn-primary', action: createNewSkill }
+    ]);
+    setTimeout(function() {
+        const inp = document.getElementById('newSkillName');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+async function createNewSkill() {
+    const name = document.getElementById('newSkillName')?.value?.trim();
+    if (!name) { showToast('技能名称不能为空', 'error'); return; }
+    const desc = document.getElementById('newSkillDesc')?.value?.trim();
+    if (!desc) { showToast('简短描述不能为空', 'error'); return; }
+    const icon = document.getElementById('newSkillIcon')?.value?.trim() || '⚡';
+    try {
+        const r = await fetch('/api/skills/registry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, short_description: desc, icon: icon })
+        });
+        const data = await r.json();
+        if (data.success) {
+            showToast('✅ 技能「' + name + '」创建成功');
+            closeModal();
+            // Refresh skill list
+            const rr = await fetch('/api/skills/registry');
+            const rd = await rr.json();
+            currentSkillsState.skills = rd.data || [];
+            renderSkillsCompact();
+            renderSkillManager();
+        } else {
+            showToast('❌ 创建失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('createNewSkill error:', e);
+        showToast('创建技能失败', 'error');
+    }
+}
+
+async function deleteCustomSkill(skillId, skillName) {
+    if (!confirm('确定要删除技能「' + skillName + '」吗？')) return;
+    try {
+        const r = await fetch('/api/skills/registry/' + encodeURIComponent(skillId), {
+            method: 'DELETE'
+        });
+        const data = await r.json();
+        if (data.success) {
+            showToast('✅ 技能「' + skillName + '」已删除');
+            // Refresh skill list
+            const rr = await fetch('/api/skills/registry');
+            const rd = await rr.json();
+            currentSkillsState.skills = rd.data || [];
+            renderSkillsCompact();
+            renderSkillManager();
+        } else {
+            showToast('❌ 删除失败: ' + (data.detail || data.message || '未知错误'), 'error');
+        }
+    } catch(e) {
+        console.error('deleteCustomSkill error:', e);
+        showToast('删除技能失败', 'error');
+    }
+}

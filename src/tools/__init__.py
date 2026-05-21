@@ -19,6 +19,30 @@ from .git_ops import tool_git_status, tool_git_log, tool_git_diff, tool_git_comm
 # ============================================================
 # 工具注册表（OpenAI Function Calling 格式）
 # ============================================================
+
+
+
+# ============================================================
+# load_skill_detail — 技能详情惰性加载
+# ============================================================
+
+def tool_load_skill_detail(skill_name: str) -> str:
+    """加载指定技能的完整详细说明"""
+    try:
+        from ..skill_models import get_skill_detail
+        detail = get_skill_detail(skill_name)
+        if detail:
+            return detail
+        from ..skill_models import load_global_skill_registry
+        registry = load_global_skill_registry()
+        for sk_id, sk in registry.items():
+            if sk.get("name") == skill_name:
+                return sk.get("detail_content", "") or f"技能「{skill_name}」暂无详细说明"
+        return f"未找到技能「{skill_name}」，可用技能列表可通过 get_registry_skills_list 查看"
+    except Exception as e:
+        return f"加载技能详情时出错: {e}"
+
+
 TOOLS = [
     {
         "type": "function",
@@ -318,6 +342,20 @@ TOOLS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_skill_detail",
+            "description": "获取指定技能的完整操作指南、使用策略和最佳实践。当你需要使用某个技能时，调用此函数获取该技能的详细说明",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "skill_name": {"type": "string", "description": "技能名称，例如'文件搜索大师'"}
+                },
+                "required": ["skill_name"]
+            }
+        }
+    },
 ]
 
 # 工具函数映射
@@ -345,6 +383,7 @@ TOOL_FUNCS: Dict[str, Any] = {
     "git_diff": tool_git_diff,
     "git_commit_stats": tool_git_commit_stats,
     "show_file": tool_show_file,
+    "load_skill_detail": tool_load_skill_detail,
 }
 
 # 工具参数校验规则

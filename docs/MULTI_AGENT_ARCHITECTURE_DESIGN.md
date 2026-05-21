@@ -2,7 +2,7 @@
 
 > **语言**: 中文 | [🌏 English](MULTI_AGENT_ARCHITECTURE_DESIGN.en.md)
 > **项目**: TennineClaw  
-> **版本**: v1.1.0（规划）  
+> **版本**: v1.1.0（依赖已就绪）  
 > **设计目标**: 构建主子 Agent 协同架构，实现任务智能分配、并行拆分、结果汇总、异常容错  
 > **前置依赖**: Skill 技能系统 + 人格化持久性系统（SKILL_PERSONALITY_DESIGN.md）  
 > **设计原则**: 高内聚低耦合、异步优先、优雅降级、可观测
@@ -2962,7 +2962,7 @@ TennineClaw/
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "last_updated": "2026-05-21 00:43:57",
   "registered_types": ["file_ops", "git_ops", "cmd_exec", "code_analysis", "info_query"],
   "instances": {

@@ -1,0 +1,20 @@
+{
+  "id": "skill_edit",
+  "name": "代码魔改师",
+  "icon": "📝",
+  "type": "active",
+  "tier": "basic",
+  "short_description": "精通文件读写与代码修改，高效编辑代码文件",
+  "tags": [
+    "代码",
+    "编辑"
+  ],
+  "associated_tools": [
+    "read_file",
+    "write_file",
+    "replace",
+    "show_file"
+  ],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

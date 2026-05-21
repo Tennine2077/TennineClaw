@@ -17,6 +17,8 @@ import asyncio
 import time
 import uuid
 import uvicorn
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -186,29 +188,6 @@ def _get_status_with_cache(timeout=0.3, session_id: str = None):
         # 锁被占用（流式请求正在处理），返回该会话的缓存
         return _get_cached_status(session_id), True
 
-
-def _try_lock_action(action_func, timeout=0.5, fallback=None):
-    """尝试获取锁后执行操作，超时则返回 fallback
-
-    用于所有需要 _session_lock 但不想被阻塞的路由。
-
-    Args:
-        action_func: 无参可调用对象，在持有锁时执行
-        timeout: 等待锁的超时时间（秒）
-        fallback: 超时后的返回值
-    Returns:
-        action_func 的返回值，或 fallback
-    """
-    acquired = _session_lock.acquire(timeout=timeout)
-    if acquired:
-        try:
-            return action_func()
-        finally:
-            _session_lock.release()
-    else:
-        return fallback
-
-
 # ============================================================
 # FastAPI 应用初始化
 # ============================================================
@@ -290,33 +269,6 @@ class PlanActionRequest(BaseModel):
 # ============================================================
 # 安全获取会话数据的辅助函数（无锁，用于已持有锁的上下文）
 # ============================================================
-
-def _safe_get_status_data(session=None):
-    """安全获取状态数据"""
-    s = session or _session
-    mode_name = s.get_mode_name()
-    msg_count = len(getattr(s, '_display_msgs', s.msgs))
-    tokens = s.current_tokens
-    completion_tk = getattr(s, "completion_tokens", 0)
-    total_tk = getattr(s, "total_tokens", 0) or (tokens + completion_tk)
-    usage_pct = (total_tk / MAX_CTX_TOKENS) * 100 if MAX_CTX_TOKENS > 0 else 0
-    notification = getattr(s, 'composer_notification', "")
-
-    composer_info = s.get_composer_status() if hasattr(s, 'get_composer_status') else ""
-    session_title = s.get_title_display() if hasattr(s, 'get_title_display') else ""
-
-    return {
-        "mode": mode_name,
-        "message_count": msg_count,
-        "total_tokens": total_tk,
-        "usage_percent": round(usage_pct, 1),
-        "session_title": session_title,
-        "composer_info": composer_info,
-        "notification": notification,
-        "version": __version__,
-    }
-
-
 # ============================================================
 # API 路由
 # ============================================================
@@ -1127,7 +1079,7 @@ async def plan_action(req: PlanActionRequest):
 
     if req.action == "execute":
         _plan_selected = 2
-        acquired = lock.acquire(timeout=1.0)
+        acquired = lock.acquire(timeout=10.0)
         if acquired:
             try:
                 session.switch_mode(MODE_SMART)
@@ -1143,7 +1095,7 @@ async def plan_action(req: PlanActionRequest):
         if _plan_selected is None:
             return {"message": "⚠️ 请先选择一个操作"}
 
-        acquired = lock.acquire(timeout=1.0)
+        acquired = lock.acquire(timeout=10.0)
         if acquired:
             try:
                 if _plan_selected == 0:
@@ -1196,6 +1148,658 @@ def find_available_port(host: str = "127.0.0.1", start_port: int = 7860, max_att
             return port
         port += 1
     raise RuntimeError(f"无法找到可用端口（尝试范围：{start_port}-{port-1}）")
+
+
+
+# ============================================================
+# Skill & Personality API
+# ============================================================
+
+class SkillPersonalityResponse(BaseModel):
+    success: bool = True
+    message: str = ""
+    data: dict = {}
+
+
+def _get_skill_personality_data(session):
+    """Get skill and personality data from session"""
+    data = {}
+    try:
+        engine = getattr(session, 'skill_engine', None)
+        if engine:
+            skills_data = []
+            for sk_id, sk in engine.skill_tree.skills.items():
+                sk_dict = sk.to_dict()
+                sk_dict["is_owned"] = sk_id in engine._owned_skill_ids
+                sk_dict["is_active"] = sk_id in engine._active_skill_ids
+                skills_data.append(sk_dict)
+            data["skills"] = skills_data
+            data["skill_stats"] = engine.get_skill_stats()
+            data["available_combos"] = [
+                c.to_dict() for c in engine.get_available_combos()
+            ]
+            data["unlockable_skills"] = [
+                s.to_dict() for s in engine.get_unlockable_skills()
+            ]
+    except Exception as e:
+        data["skills_error"] = str(e)
+
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if pe:
+            data["personality"] = pe.get_stats()
+            data["personality_guide"] = pe.get_response_style_guide()
+            data["important_memories"] = [
+                m.to_dict() for m in pe.get_important_memories(0.6)
+            ]
+    except Exception as e:
+        data["personality_error"] = str(e)
+
+    return data
+
+
+@app.get("/api/skills", response_model=SkillPersonalityResponse)
+async def get_skills(session_id: str = None):
+    """获取所有技能及其状态"""
+    session, _ = _get_session_and_lock(session_id)
+    data = _get_skill_personality_data(session)
+    return SkillPersonalityResponse(
+        success=True,
+        message=f"共 {len(data.get('skills', []))} 个技能",
+        data={"skills": data.get("skills", []), "stats": data.get("skill_stats", {})},
+    )
+
+
+@app.get("/api/skills/available", response_model=SkillPersonalityResponse)
+async def get_available_skills(session_id: str = None):
+    """获取当前可用技能列表"""
+    session, _ = _get_session_and_lock(session_id)
+    try:
+        skills = getattr(session, 'skill_engine', None)
+        if skills:
+            available = skills.get_available_skills()
+            return SkillPersonalityResponse(
+                success=True,
+                data={"skills": [s.to_dict() for s in available]},
+            )
+    except Exception as e:
+        return SkillPersonalityResponse(success=False, message=str(e))
+    return SkillPersonalityResponse(success=False, message="技能引擎未初始化")
+
+
+@app.post("/api/skills/{skill_id}/activate")
+async def activate_skill(skill_id: str, session_id: str = None):
+    """激活/停用技能"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        engine = getattr(session, 'skill_engine', None)
+        if not engine:
+            return SkillPersonalityResponse(success=False, message="技能引擎未初始化")
+        skill = engine.skill_tree.get_skill(skill_id)
+        if not skill:
+            return SkillPersonalityResponse(success=False, message=f"技能 {skill_id} 不存在")
+        is_active = engine.is_skill_active(skill_id)
+        if is_active:
+            engine.deactivate_skill(skill_id)
+            return SkillPersonalityResponse(message=f"已停用: {skill.name}")
+        else:
+            engine.activate_skill(skill_id)
+            return SkillPersonalityResponse(message=f"已激活: {skill.name}")
+    finally:
+        lock.release()
+
+
+@app.get("/api/personality", response_model=SkillPersonalityResponse)
+async def get_personality(session_id: str = None):
+    """获取人格档案"""
+    session, _ = _get_session_and_lock(session_id)
+    data = _get_skill_personality_data(session)
+    return SkillPersonalityResponse(
+        success=True,
+        data={
+            "personality": data.get("personality", {}),
+            "guide": data.get("personality_guide", ""),
+            "memories": data.get("important_memories", []),
+        },
+    )
+
+
+@app.post("/api/personality/template")
+async def apply_personality_template(data: dict, session_id: str = None):
+    """应用人格模板（支持JSON body）"""
+    template_name = data.get("name", "").strip()
+    if not template_name:
+        raise HTTPException(status_code=400, detail="缺少模板名称")
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        from .personality_models import list_personality_templates, load_custom_templates
+        all_templates = list_personality_templates()
+        if template_name not in all_templates:
+            return SkillPersonalityResponse(
+                success=False,
+                message=f"模板不存在，可用: {all_templates}",
+            )
+        print(f"[apply_personality_template] Applying template: {template_name}", flush=True)
+        if not pe.apply_template(template_name):
+            print(f"[apply_personality_template] ⚠️ Failed to apply template: {template_name}", flush=True)
+            return SkillPersonalityResponse(
+                success=False, 
+                message=f"应用人格模板「{template_name}」失败，请检查角色定义文件"
+            )
+        print(f"[apply_personality_template] Template applied successfully", flush=True)
+        # Refresh system prompt with new personality context
+        if hasattr(session, 'refresh_personality_in_system_prompt'):
+            session.refresh_personality_in_system_prompt()
+        # 如果自定义模板有预置技能，一并装备
+        pub_tmpl = load_custom_templates().get(template_name, {})
+        equipped_ids = []
+        if pub_tmpl:
+            equipped_ids = pub_tmpl.get("equipped_skill_ids", [])
+            soul_md = pub_tmpl.get("soul_md", "")
+            if soul_md:
+                try:
+                    import os
+                    personas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "personas")
+                    role_dir = os.path.join(personas_dir, template_name)
+                    os.makedirs(role_dir, exist_ok=True)
+                    with open(os.path.join(role_dir, "soul.md"), "w", encoding="utf-8") as f:
+                        f.write(soul_md)
+                except Exception as e:
+                    logger.warning(f"写入 soul.md 失败: {e}")
+        else:
+            # Try personas directory
+            try:
+                import os, json
+                personas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "personas")
+                def_file = os.path.join(personas_dir, template_name, "definition.json")
+                if os.path.isfile(def_file):
+                    with open(def_file, 'r', encoding='utf-8') as f:
+                        def_data = json.load(f)
+                    equipped_ids = def_data.get("equipped_skill_ids", [])
+            except Exception:
+                pass
+        if equipped_ids:
+            pe.profile.equipped_skill_ids = list(equipped_ids)
+        pe.save_profile()
+        return SkillPersonalityResponse(
+            success=True,
+            message=f"已应用人格模板: {template_name}",
+            data={"equipped_skills": list(pe.profile.equipped_skill_ids)},
+        )
+    except Exception as e:
+        return SkillPersonalityResponse(success=False, message=str(e))
+    finally:
+        lock.release()
+
+
+@app.get("/api/personality/templates")
+async def list_templates():
+    """列出所有可用人格模板"""
+    from .personality_models import list_personality_templates
+    return {"templates": list_personality_templates()}
+
+
+@app.get("/api/skills/combos", response_model=SkillPersonalityResponse)
+async def get_skill_combos(session_id: str = None):
+    """获取可用技能组合"""
+    session, _ = _get_session_and_lock(session_id)
+    try:
+        engine = getattr(session, 'skill_engine', None)
+        if engine:
+            combos = engine.get_available_combos()
+            return SkillPersonalityResponse(
+                success=True,
+                data={"combos": [c.to_dict() for c in combos]},
+            )
+    except Exception as e:
+        return SkillPersonalityResponse(success=False, message=str(e))
+    return SkillPersonalityResponse(success=False, message="技能引擎未初始化")
+
+
+@app.get("/api/status/extended")
+async def get_extended_status(session_id: str = None):
+    """获取扩展状态（包含技能和人格信息）"""
+    session, _ = _get_session_and_lock(session_id)
+    data = _get_skill_personality_data(session)
+    return {
+        "skill_stats": data.get("skill_stats", {}),
+        "personality_name": data.get("personality", {}).get("profile_name", ""),
+        "personality_traits": data.get("personality", {}).get("traits", {}),
+        "memories_count": data.get("personality", {}).get("memories_count", 0),
+    }
+
+
+
+# ============================================================
+# 人格管理 API（新增）
+# ============================================================
+
+@app.put("/api/personality/traits")
+async def update_personality_traits(data: dict, session_id: str = None):
+    """更新性格特征（OCEAN 五维）"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        # data格式: {"openness": 80, "conscientiousness": 70, ...}
+        for dim, val in data.items():
+            if hasattr(pe.profile.traits, dim):
+                current = getattr(pe.profile.traits, dim)
+                delta = val - current
+                pe.update_trait(dim, delta)
+        pe.save_profile()
+        # Refresh system prompt with updated traits
+        if hasattr(session, 'refresh_personality_in_system_prompt'):
+            session.refresh_personality_in_system_prompt()
+        return SkillPersonalityResponse(
+            success=True,
+            message="性格特征已更新",
+            data={"traits": pe.profile.traits.to_dict()},
+        )
+    finally:
+        lock.release()
+
+
+@app.put("/api/personality/style")
+async def update_language_style(data: dict, session_id: str = None):
+    """更新语言风格"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        for dim, val in data.items():
+            if hasattr(pe.profile.language_style, dim):
+                current = getattr(pe.profile.language_style, dim)
+                pe.profile.language_style.adjust(dim, val - current)
+        pe.save_profile()
+        # Refresh system prompt with updated style
+        if hasattr(session, 'refresh_personality_in_system_prompt'):
+            session.refresh_personality_in_system_prompt()
+        return SkillPersonalityResponse(
+            success=True,
+            message="语言风格已更新",
+            data={"style": pe.profile.language_style.to_dict(), "tags": pe.profile.language_style.get_style_tags()},
+        )
+    finally:
+        lock.release()
+
+
+@app.put("/api/personality/preferences")
+async def update_behavior_preferences(data: dict, session_id: str = None):
+    """更新行为偏好"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        prefs = pe.profile.behavior_prefs
+        for key, val in data.items():
+            if hasattr(prefs, key):
+                setattr(prefs, key, val)
+        pe.save_profile()
+        return SkillPersonalityResponse(
+            success=True,
+            message="行为偏好已更新",
+            data={"preferences": prefs.to_dict()},
+        )
+    finally:
+        lock.release()
+
+
+@app.get("/api/personality/memories")
+async def get_memories(keyword: str = "", session_id: str = None):
+    """获取记忆列表（支持关键词搜索）"""
+    session, _ = _get_session_and_lock(session_id)
+    pe = getattr(session, 'personality_engine', None)
+    if not pe:
+        return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+    if keyword:
+        memories = pe.search_memories(keyword)
+    else:
+        memories = sorted(
+            pe.profile.memories,
+            key=lambda m: m.importance,
+            reverse=True,
+        )
+    return SkillPersonalityResponse(
+        success=True,
+        data={"memories": [m.to_dict() for m in memories]},
+    )
+
+
+@app.delete("/api/personality/memory/{memory_id}")
+async def delete_memory(memory_id: str, session_id: str = None):
+    """删除指定记忆"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        before = len(pe.profile.memories)
+        pe.profile.memories = [m for m in pe.profile.memories if m.id != memory_id]
+        if len(pe.profile.memories) < before:
+            pe.save_profile()
+            return SkillPersonalityResponse(success=True, message="记忆已删除")
+        return SkillPersonalityResponse(success=False, message="未找到该记忆")
+    finally:
+        lock.release()
+
+
+@app.post("/api/personality/reset")
+async def reset_personality(session_id: str = None):
+    """重置人格为默认配置"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+        from .personality_models import PersonalityProfile
+        old_id = pe.profile.profile_id
+        pe.profile = PersonalityProfile(profile_id=old_id)
+        pe.save_profile()
+        # Refresh system prompt after personality reset
+        if hasattr(session, 'refresh_personality_in_system_prompt'):
+            session.refresh_personality_in_system_prompt()
+        return SkillPersonalityResponse(
+            success=True,
+            message="人格已重置为默认配置",
+            data={"profile": pe.get_stats()},
+        )
+    finally:
+        lock.release()
+
+
+@app.get("/api/personality/style/tags")
+async def get_style_tags(session_id: str = None):
+    """获取当前语言风格标签"""
+    session, _ = _get_session_and_lock(session_id)
+    pe = getattr(session, 'personality_engine', None)
+    if not pe:
+        return SkillPersonalityResponse(success=False, message="人格引擎未初始化")
+    return SkillPersonalityResponse(
+        success=True,
+        data={
+            "tags": pe.profile.language_style.get_style_tags(),
+            "style": pe.profile.language_style.to_dict(),
+        },
+    )
+
+
+# ============================================================
+# 全局技能库 API（新增）
+# ============================================================
+
+@app.get("/api/skills/registry")
+async def get_skill_registry(include_detail: bool = False, session_id: str = None):
+    """获取全局技能库列表"""
+    try:
+        from .skill_models import get_registry_skills_list
+        skills = get_registry_skills_list(include_detail=include_detail)
+        return {"success": True, "data": skills}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/skills/registry/{skill_id}/detail")
+async def get_skill_detail(skill_id: str, session_id: str = None):
+    """获取单个技能的详细内容"""
+    try:
+        from .skill_models import get_skill_detail
+        detail = get_skill_detail(skill_id)
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"技能 {skill_id} 不存在")
+        return {"success": True, "detail": detail}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/skills/registry")
+async def create_skill(data: dict, session_id: str = None):
+    """创建自定义技能"""
+    try:
+        from .skill_models import add_custom_skill
+        # 记录创建者
+        if session_id:
+            data["created_by"] = session_id
+        result = add_custom_skill(data)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True, "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/skills/registry/{skill_id}")
+async def update_skill(skill_id: str, data: dict, session_id: str = None):
+    """更新自定义技能"""
+    try:
+        from .skill_models import update_custom_skill
+        result = update_custom_skill(skill_id, data)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/skills/registry/{skill_id}")
+async def delete_skill(skill_id: str, session_id: str = None):
+    """删除自定义技能"""
+    try:
+        from .skill_models import delete_custom_skill
+        result = delete_custom_skill(skill_id)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# 人格-技能绑定 API（新增）
+# ============================================================
+
+@app.get("/api/personality/equipped-skills")
+async def get_equipped_skills(session_id: str = None):
+    """获取当前人格已装备的技能"""
+    session, _ = _get_session_and_lock(session_id)
+    pe = getattr(session, 'personality_engine', None)
+    if not pe:
+        raise HTTPException(status_code=404, detail="人格引擎未初始化")
+    try:
+        from .skill_models import load_global_skill_registry
+        registry = load_global_skill_registry()
+        equipped_ids = pe.profile.equipped_skill_ids
+        equipped_skills = []
+        for sk_id in equipped_ids:
+            if sk_id in registry:
+                equipped_skills.append(registry[sk_id])
+        return {"success": True, "data": equipped_skills, "equipped_ids": equipped_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/personality/equip-skill/{skill_id}")
+async def equip_skill(skill_id: str, session_id: str = None):
+    """装备技能到当前人格"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            raise HTTPException(status_code=404, detail="人格引擎未初始化")
+        if skill_id not in pe.profile.equipped_skill_ids:
+            pe.profile.equipped_skill_ids.append(skill_id)
+            pe.save_profile()
+        return {"success": True, "message": f"已装备技能 {skill_id}"}
+    finally:
+        lock.release()
+
+
+@app.delete("/api/personality/equip-skill/{skill_id}")
+async def unequip_skill(skill_id: str, session_id: str = None):
+    """从当前人格卸下技能"""
+    session, lock = _get_session_and_lock(session_id)
+    acquired = lock.acquire(timeout=10.0)
+    if not acquired:
+        raise HTTPException(status_code=423, detail="会话忙，请稍后重试")
+    try:
+        pe = getattr(session, 'personality_engine', None)
+        if not pe:
+            raise HTTPException(status_code=404, detail="人格引擎未初始化")
+        if skill_id in pe.profile.equipped_skill_ids:
+            pe.profile.equipped_skill_ids.remove(skill_id)
+            pe.save_profile()
+        return {"success": True, "message": f"已卸下技能 {skill_id}"}
+    finally:
+        lock.release()
+
+
+# ============================================================
+# 自定义人格模板 API（新增）
+
+
+# ============================================================
+# Session Role API (预留扩展接口)
+# ============================================================
+
+@app.get("/api/session/{session_id}/role")
+async def get_session_role(session_id: str = None):
+    """获取当前会话绑定的角色卡
+    
+    Note: 当前版本角色卡在新建会话时选定，不支持会话中切换。
+    此接口为预留，后续用于主/子 agent 多角色支持。
+    """
+    session, _ = _get_session_and_lock(session_id)
+    
+    # Get personality engine for current session
+    pe = getattr(session, 'personality_engine', None)
+    if pe:
+        role_name = pe.profile.name or '默认助手'
+        return {
+            "success": True,
+            "data": {
+                "role_id": pe.profile_id,
+                "role_name": role_name,
+            }
+        }
+    
+    return {
+        "success": True,
+        "data": {
+            "role_id": "default",
+            "role_name": "默认助手",
+        }
+    }
+
+
+@app.put("/api/session/{session_id}/role")
+async def set_session_role(session_id: str = None, data: dict = None):
+    """切换会话的角色卡（预留接口）
+    
+    当前版本不支持会话中切换角色。
+    此接口为预留，后续用于主/子 agent 嵌套调用场景。
+    
+    Returns:
+        固定返回"功能开发中"提示
+    """
+    return {
+        "success": False,
+        "message": "会话中切换角色功能开发中，敬请期待",
+        "future_use": "此接口预留用于主/子 agent 多角色支持"
+    }
+# ============================================================
+
+@app.get("/api/personality/templates/all")
+async def get_all_templates(session_id: str = None):
+    """获取所有模板（内置+自定义）"""
+    try:
+        from .personality_models import get_all_templates_with_custom
+        templates = get_all_templates_with_custom()
+        return {"success": True, "data": templates}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/personality/templates/custom")
+async def create_custom_template(data: dict, session_id: str = None):
+    """创建自定义人格模板"""
+    try:
+        from .personality_models import add_custom_template
+        result = add_custom_template(data)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True, "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/personality/templates/custom/{name}")
+async def update_custom_template(name: str, data: dict, session_id: str = None):
+    """更新自定义人格模板"""
+    try:
+        from .personality_models import update_custom_template
+        result = update_custom_template(name, data)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/personality/templates/custom/{name}")
+async def delete_custom_template(name: str, session_id: str = None):
+    """删除自定义人格模板"""
+    try:
+        from .personality_models import delete_custom_template
+        result = delete_custom_template(name)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def start_web_api(host="127.0.0.1", port=None):

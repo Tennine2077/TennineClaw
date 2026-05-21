@@ -1,6 +1,6 @@
 ﻿# TennineClaw 项目说明文档
 
-> **版本**: 1.0.0
+> **版本**: 1.1.0
 > **语言**: 中文 | [🌏 English](DOCUMENTATION.en.md)  
 > **描述**: 智能终端助手 — 基于 AI 的代码分析与任务执行 Web 平台  
 > **许可**: MIT License  
@@ -32,6 +32,11 @@
    - [3.17 `tools/info_ops.py` — 信息查询工具](#317-toolsinfo_opspy--信息查询工具)
    - [3.18 `tools/search_ops.py` — 搜索与替换工具](#318-toolssearch_opspy--搜索与替换工具)
    - [3.19 `tools/git_ops.py` — Git 操作工具](#319-toolsgit_opspy--git-操作工具)
+   - [3.20 `personality_models.py` — 人格数据模型](#320-personality_modelspy--人格数据模型)
+   - [3.21 `personality_engine.py` — 人格引擎](#321-personality_enginepy--人格引擎)
+   - [3.22 `skill_models.py` — 技能数据模型](#322-skill_modelspy--技能数据模型)
+   - [3.23 `skill_engine.py` — 技能引擎](#323-skill_enginepy--技能引擎)
+   - [3.24 `skill_loader.py` — 技能加载器](#324-skill_loaderpy--技能加载器)
 4. [数据流说明](#4-数据流说明)
 
 ---
@@ -114,7 +119,7 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `__version__` | `"1.0.0"` | 当前版本号，API 响应和前端显示均引用此值 |
+| `__version__` | `"1.1.0"` | 当前版本号，API 响应和前端显示均引用此值 |
 | `__description__` | `"Intelligent Terminal Assistant - AI 编程助手"` | 项目描述 |
 | `__license__` | `"MIT"` | 开源许可协议 |
 
@@ -882,7 +887,7 @@ AgentSession                         Master Agent
 
 > **文档版本**: 1.0  
 > **生成日期**: 2026年5月19日  
-> **对应代码版本**: v1.0.0  
+> **对应代码版本**: v1.1.0  
 > **最近更新**: 2026年5月19日 — 首个正式版本
 
 

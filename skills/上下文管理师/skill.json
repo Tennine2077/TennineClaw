@@ -1,0 +1,15 @@
+{
+  "id": "skill_context",
+  "name": "上下文管理师",
+  "icon": "🧠",
+  "type": "passive",
+  "tier": "intermediate",
+  "short_description": "精通上下文管理与优化，保持高效对话",
+  "tags": [
+    "上下文",
+    "优化"
+  ],
+  "associated_tools": [],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

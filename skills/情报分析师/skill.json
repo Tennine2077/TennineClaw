@@ -1,0 +1,19 @@
+{
+  "id": "skill_info",
+  "name": "情报分析师",
+  "icon": "📊",
+  "type": "passive",
+  "tier": "basic",
+  "short_description": "精通系统信息采集与分析，快速获取关键情报",
+  "tags": [
+    "信息",
+    "分析"
+  ],
+  "associated_tools": [
+    "get_system_info",
+    "get_current_time",
+    "count_lines"
+  ],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

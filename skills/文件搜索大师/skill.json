@@ -1,0 +1,20 @@
+{
+  "id": "skill_search",
+  "name": "文件搜索大师",
+  "icon": "🔍",
+  "type": "active",
+  "tier": "basic",
+  "short_description": "精通文件搜索与内容检索，快速定位目标文件",
+  "tags": [
+    "文件",
+    "搜索"
+  ],
+  "associated_tools": [
+    "search_files",
+    "grep",
+    "find_files",
+    "diff"
+  ],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

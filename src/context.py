@@ -410,17 +410,4 @@ def _llm_compress(history_text: str, client, max_chars: int = 30000, full_summar
 # ============================================================
 # 消息压缩包装
 # ============================================================
-
-def compact_messages(msgs: list, client=None) -> list:
-    """压缩上下文，内部调用 auto_composer
-
-    Args:
-        msgs: 当前完整的消息列表
-        client: OpenAI 客户端实例
-
-    Returns:
-        压缩后的消息列表（由 auto_composer 处理）
-    """
-    return auto_composer(msgs, client)
-
-
+

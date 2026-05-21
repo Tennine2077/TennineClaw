@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # TennineClaw - 智能终端助手（Gradio 版）
 # ============================================================
 # 主入口：包含对话逻辑、API 交互、工具调度
@@ -26,6 +26,8 @@ from .tools import TOOLS, TOOL_FUNCS
 from .prompt_optimizer import optimize_prompt, format_optimized_prompt
 from .mode_manager import ModeManager
 from .main_stream import AgentSessionStreamMixin
+from .skill_engine import SkillEngine, create_default_skills
+from .personality_engine import PersonalityEngine
 
 
 # ============================================================
@@ -52,7 +54,15 @@ class AgentSession(AgentSessionStreamMixin):
             timeout=60.0,
         )
         self.mode_mgr = ModeManager(mode)
-        self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
+                # Build system prompt with personality context
+        personality_ctx = getattr(self, 'personality_engine', None)
+        personality_text = personality_ctx.generate_personality_context() if personality_ctx else ''
+        skill_text = self._build_skill_context()
+        self.system_prompt = build_system_prompt(
+            mode=self.mode_mgr.get_mode(),
+            skill_context=skill_text,
+            personality_context=personality_text,
+        )
         self.msgs = [{"role": "system", "content": self.system_prompt}]
         self._display_msgs = [{"role": "system", "content": self.system_prompt}]
         self.current_tokens = 0
@@ -90,6 +100,22 @@ class AgentSession(AgentSessionStreamMixin):
         self._pending_mode_switch = False  # 是否有待处理的模式切换注入
 
         # 会话自动保存路径与前端展示记录
+        # -- Skill & Personality Systems --
+        from .skill_engine import SkillEngine, create_default_skills
+        from .personality_engine import PersonalityEngine
+        self.skill_engine = SkillEngine()
+        loaded_skills = self.skill_engine.load()
+        if not loaded_skills:
+            default_tree = create_default_skills()
+            self.skill_engine = SkillEngine(skill_tree=default_tree)
+        self.personality_engine = PersonalityEngine(profile_id=self.session_id)
+        self.personality_engine.load_profile()
+        # Load soul definition
+        self.personality_engine.load_soul_definition()
+        # Rebuild system prompt with personality context
+        self.refresh_personality_in_system_prompt()
+        self._last_skill_inject_round = 0
+        self._skill_inject_interval = 3
         self._session_save_path = None
         self.original_user_inputs = {}     # msg_index -> original_text
         self.optimized_prompts = {}        # msg_index -> optimized_text
@@ -98,9 +124,70 @@ class AgentSession(AgentSessionStreamMixin):
         self._stream_interrupted = False
         self._partial_stream_content = ""  # 切换会话时保留的部分回复
 
+
+    def _build_skill_context(self) -> str:
+        """Build skill context text from skill engine for system prompt injection"""
+        skill_text = ''
+        try:
+            engine = getattr(self, 'skill_engine', None)
+            if engine:
+                available = engine.get_available_skills()
+                if available:
+                    skill_text = '\u3010\u5f53\u524d\u6280\u80fd\u3011\n'
+                    try:
+                        from .skill_models import load_global_skill_registry
+                        registry = load_global_skill_registry()
+                    except ImportError:
+                        registry = {}
+                    for sk in available:
+                        short_desc = ""
+                        if sk.id in registry:
+                            short_desc = registry[sk.id].get("short_description", "")
+                        if not short_desc:
+                            short_desc = sk.short_description or sk.description
+                        skill_text += f"- {sk.icon} {sk.name}: {short_desc}\n"
+        except Exception:
+            pass
+        return skill_text
+
+    def refresh_personality_in_system_prompt(self):
+        """Refresh system prompt with current personality context and skills
+        
+        Call this after personality changes (template apply, traits update, etc.)
+        """
+        personality_ctx = getattr(self, 'personality_engine', None)
+        if personality_ctx:
+            # Reload soul definition
+            personality_ctx.load_soul_definition()
+            personality_text = personality_ctx.generate_personality_context()
+        else:
+            personality_text = ''
+        skill_text = self._build_skill_context()
+        
+        # Rebuild system prompt with personality context and skills
+        self.system_prompt = build_system_prompt(
+            mode=self.mode_mgr.get_mode(),
+            skill_context=skill_text,
+            personality_context=personality_text,
+        )
+        
+        # Update the first system message
+        if len(self.msgs) > 0 and self.msgs[0].get('role') == 'system':
+            self.msgs[0]['content'] = self.system_prompt
+        if len(self._display_msgs) > 0 and self._display_msgs[0].get('role') == 'system':
+            self._display_msgs[0]['content'] = self.system_prompt
+
     def reset(self):
         """重置会话（清除上下文）"""
-        self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
+                # Build system prompt with personality context
+        personality_ctx = getattr(self, 'personality_engine', None)
+        personality_text = personality_ctx.generate_personality_context() if personality_ctx else ''
+        skill_text = self._build_skill_context()
+        self.system_prompt = build_system_prompt(
+            mode=self.mode_mgr.get_mode(),
+            skill_context=skill_text,
+            personality_context=personality_text,
+        )
         self.msgs = [{"role": "system", "content": self.system_prompt}]
         self._display_msgs = [{"role": "system", "content": self.system_prompt}]
         self.current_tokens = 0
@@ -187,7 +274,15 @@ class AgentSession(AgentSessionStreamMixin):
     def switch_mode(self, mode: int) -> str:
         """切换模式并返回提示信息"""
         if self.mode_mgr.set_mode(mode):
-            self.system_prompt = build_system_prompt(self.mode_mgr.get_mode())
+            # Build system prompt with personality context
+            personality_ctx = getattr(self, 'personality_engine', None)
+            personality_text = personality_ctx.generate_personality_context() if personality_ctx else ''
+            skill_text = self._build_skill_context()
+            self.system_prompt = build_system_prompt(
+                mode=self.mode_mgr.get_mode(),
+                skill_context=skill_text,
+                personality_context=personality_text,
+            )
             mode_name = self.mode_mgr.get_mode_name()
 
             # 切换前先清理历史遗留的多余 system prompt
@@ -803,6 +898,22 @@ class AgentSession(AgentSessionStreamMixin):
         # （已移至优化后处理）
 
         # ---- 注入当前模式 system prompt（每 3 轮或模式切换后） ----
+        # ---- Skill & Personality Context ----
+        self.skill_engine.new_round()
+        round_num = self._round_count
+        
+        # Refresh personality and skills via rebuild (avoid unbounded prompt growth)
+        if (round_num - self._last_skill_inject_round >= self._skill_inject_interval
+                or self._last_skill_inject_round == 0):
+            self.refresh_personality_in_system_prompt()
+            
+            # Update the first system message with the rebuilt prompt
+            if self.msgs and self.msgs[0].get("role") == "system":
+                self.msgs[0]["content"] = self.system_prompt
+                if self._display_msgs and self._display_msgs[0].get("role") == "system":
+                    self._display_msgs[0]["content"] = self.system_prompt
+            self._last_skill_inject_round = round_num
+
         self._inject_mode_prompt_if_needed()
 
         # ---- Prompt 智能优化 ----
@@ -893,6 +1004,13 @@ class AgentSession(AgentSessionStreamMixin):
                         "tool_call_id": tc.id,
                         "content": str(result)
                     })
+                    # -- Skill: 记录工具使用经验 --
+                    try:
+                        self.skill_engine.gain_experience_for_tool(
+                            tc.function.name, success=True, task_difficulty=1.0
+                        )
+                    except Exception:
+                        pass
                     tool_results_text += f"\n🔧 调用工具: {tc.function.name}(...工具结果已返回...)\n"
 
                 final_content += tool_results_text
@@ -935,6 +1053,29 @@ class AgentSession(AgentSessionStreamMixin):
                     )
 
                 # 每轮结束递增计数
+                # -- Personality: 交互分析与调整 --
+                try:
+                    interaction_data = {
+                        "task_type": "general",
+                        "user_feedback": "neutral",
+                        "complexity": 0.5,
+                        "success": True,
+                    }
+                    self.personality_engine.analyze_and_adjust_traits(interaction_data)
+                    self.personality_engine.adapt_language_style({
+                        "user_style": "neutral",
+                        "topic": "general",
+                        "urgency": 0.5,
+                    })
+                except Exception:
+                    pass
+                # -- 自动保存技能与人格 --
+                try:
+                    self.skill_engine.save()
+                    self.personality_engine.save_profile()
+                except Exception:
+                    pass
+
                 self._on_round_complete()
 
                 # Micro Composer

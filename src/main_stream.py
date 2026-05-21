@@ -302,6 +302,14 @@ class AgentSessionStreamMixin:
             # ---- Auto Composer 检查（Token 阈值触发语义压缩） ----
             self._run_auto_composer_if_needed()
 
+            # ---- Refresh personality context before each conversation round ----
+            if hasattr(self, 'personality_engine') and self.personality_engine:
+                personality_text = self.personality_engine.generate_personality_context()
+                if personality_text:
+                    # Ensure system prompt has current personality context
+                    if hasattr(self, 'refresh_personality_in_system_prompt'):
+                        self.refresh_personality_in_system_prompt()
+
             # ---- 流式对话循环（处理工具调用链） ----
             final_content = ""
             collected_content = ""

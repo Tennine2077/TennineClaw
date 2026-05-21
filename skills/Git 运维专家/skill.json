@@ -1,0 +1,20 @@
+{
+  "id": "skill_git",
+  "name": "Git 运维专家",
+  "icon": "🔧",
+  "type": "active",
+  "tier": "intermediate",
+  "short_description": "精通 Git 版本控制操作，管理代码历史与分支",
+  "tags": [
+    "Git",
+    "版本控制"
+  ],
+  "associated_tools": [
+    "git_status",
+    "git_log",
+    "git_diff",
+    "git_commit_stats"
+  ],
+  "is_builtin": true,
+  "version": "1.0.0"
+}

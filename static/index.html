@@ -2,9 +2,13 @@
 <html lang="zh-CN" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TennineClaw - 智能终端助手</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=v75412532">
+    <link rel="stylesheet" href="/static/css/personality.css?v=v75412532">
     <!-- Highlight.js: 代码语法高亮 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github-dark.min.css" id="hljsTheme">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
@@ -22,6 +26,7 @@
         </div>
         <div class="header-right">
             <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+            
             <span class="status-dot" id="statusDot"></span>
             <span class="status-label">在线</span>
         </div>
@@ -121,6 +126,37 @@
             </div>
 
             <!-- Plan 菜单 -->
+
+            <!-- 当前角色 -->
+            <div class="panel" id="currentRolePanel">
+                <div class="panel-header">
+                    <span>🎭 当前角色</span>
+                </div>
+                <div class="panel-body" id="currentRoleBody">
+                          <div class="role-card" id="roleCard" style="display:flex; align-items:center; gap:8px;">
+                        <span class="role-icon" id="roleIcon" style="font-size:24px; flex-shrink:0;">🧑</span>
+                        <span class="role-name" id="roleName" style="flex:1; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">默认助手</span>
+                        <button class="btn btn-change-role" id="changeRoleBtn" style="flex-shrink:0; font-size:10px; padding:3px 8px; border-radius:4px; background:rgba(99,102,241,0.15); color:#818cf8; border:none; cursor:pointer;" onclick="showRoleSelector()" title="切换角色">🔄</button>
+                    </div>
+                          <div class="role-empty" id="roleEmpty" style="display:none;">
+                        <button class="btn btn-primary" onclick="showRoleSelector()" style="width:100%; font-size:11px; padding:5px 8px; border-radius:5px; border:none; cursor:pointer; background:rgba(99,102,241,0.2); color:#818cf8;">
+                            🎯 选择角色卡
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="currentSkillsPanel">
+                <div class="panel-header">
+                    <span>🛠️ 当前技能</span>
+                </div>
+                <div class="panel-body" style="text-align:center;">
+                    <button class="btn btn-manage-skills" onclick="openSkillManagerModal()" style="width:100%; padding:6px; border-radius:5px; background:rgba(99,102,241,0.1); color:#818cf8; border:none; cursor:pointer; font-size:12px;" id="manageSkillsBtn">
+                        ⚙️ 管理技能
+                    </button>
+                </div>
+            </div>
+
             <div class="panel plan-menu-panel" id="planMenuPanel" style="display: none;">
                 <div class="panel-header plan-header">
                     <span>📋 Plan 操作菜单</span>
@@ -194,15 +230,15 @@
                 <div class="panel-header">
                     <span>⚡ 快捷操作</span>
                 </div>
-                <div class="panel-body">
-                    <button class="btn btn-full btn-outline" id="compactBtn" style="margin-bottom:6px;">
-                        🗜️ 手动压缩上下文
+                <div class="panel-body" style="display:flex; gap:6px;">
+                    <button class="btn btn-outline" id="compactBtn" style="flex:1; font-size:11px; padding:5px 4px;">
+                        🗜️ 压缩上下文
                     </button>
-                    <button class="btn btn-full btn-outline" id="statusBtn" style="margin-bottom:6px;">
-                        📊 查看 Composer 状态
+                    <button class="btn btn-outline" id="statusBtn" style="flex:1; font-size:11px; padding:5px 4px;">
+                        📊 状态
                     </button>
-                    <button class="btn btn-full btn-outline" id="helpBtn">
-                        ℹ️ 查看帮助
+                    <button class="btn btn-outline" id="helpBtn" style="flex:1; font-size:11px; padding:5px 4px;">
+                        ℹ️ 帮助
                     </button>
                 </div>
             </div>
@@ -240,7 +276,9 @@
         </aside>
     </div>
 
-    <!-- Toast 通知 -->
+    
+
+
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- Markdown 解析库: marked -->
@@ -248,7 +286,8 @@
     <!-- 代码语法高亮: highlight.js -->
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/highlight.min.js"></script>
     <!-- 项目脚本 -->
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/api.js?v=v75412532"></script>
+    <script src="/static/js/app.js?v=v75412532"></script>
+    <script src="/static/js/personality.js?v=v75412532"></script>
 </body>
-</html>
+<!-- v75412532 --></html>

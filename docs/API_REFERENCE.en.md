@@ -1,6 +1,6 @@
 # TennineClaw Function Reference
 
-> Version: 1.0.0 | Auto-generated on May 19, 2026
+> Version: 1.1.0 | Auto-generated on May 22, 2026
 
 [🇨🇳 **中文**](API_REFERENCE.md) | [🌏 **English**](API_REFERENCE.en.md)
 
