@@ -45,6 +45,13 @@ logs/
 plan.json
 plan_snapshots/
 
+# 自定义人格（新增的不上传，只跟踪内置人格）
+personas/*/
+!personas/严谨工程师/
+!personas/创意极客/
+!personas/高效助手/
+!personas/Tennine/
+
 # IDE
 .vscode/
 .idea/
