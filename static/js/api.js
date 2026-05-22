@@ -316,4 +316,59 @@ const API = {
     async deleteRegisteredSession(sessionId) {
         return this._request('DELETE', `/api/session/${encodeURIComponent(sessionId)}`);
     },
+
+    // ============================================================
+    // 技能-人格关系管理 API
+    // 以技能为主体管理使用者（人格）列表
+    // ============================================================
+
+    /**
+     * 获取某个技能下的所有使用者（人格名称列表）
+     */
+    async getSkillPersonas(skillId) {
+        return this._request('GET', `/api/skills/${skillId}/personas`);
+    },
+
+    /**
+     * 为技能添加一个使用者（人格）
+     */
+    async addSkillPersona(skillId, personaName) {
+        return this._request('POST', `/api/skills/${skillId}/personas`, { persona_name: personaName });
+    },
+
+    /**
+     * 从技能移除一个使用者（人格）
+     */
+    async removeSkillPersona(skillId, personaName) {
+        return this._request('DELETE', `/api/skills/${skillId}/personas/${encodeURIComponent(personaName)}`);
+    },
+
+    /**
+     * 批量设置技能的使用者列表
+     */
+    async setSkillPersonas(skillId, personaNames) {
+        return this._request('PUT', `/api/skills/${skillId}/personas`, { persona_names: personaNames });
+    },
+
+    /**
+     * 以技能端为准，同步所有人格的技能列表
+     */
+    async syncAllPersonas() {
+        return this._request('POST', '/api/skills/sync-personas');
+    },
+
+
+    /**
+     * 保存当前角色的技能配置到本地文件
+     */
+    async saveSkillConfig() {
+        return this._request('POST', '/api/skills/save-config');
+    },
+
+    /**
+     * 获取当前活跃的人格名称
+     */
+    async getActivePersonaName() {
+        return this._request('GET', '/api/personality/active-name');
+    },
 };

@@ -1,3 +1,387 @@
+
+// ============================================================
+// 角色池 (左侧浮动角色选择)
+// ============================================================
+
+/**
+ * 创建并显示左侧浮动角色池
+ * 替代原有的 modal 式角色选择
+ * 点击角色悬停显示 soul.md 预览
+ */
+async function toggleRoleSubmenu() {
+    // 如果已存在角色池，关闭它
+    var existing = document.querySelector('.role-pool-overlay');
+    if (existing) { existing.remove(); return; }
+
+    try {
+        var r = await fetch('/api/personality/templates/all');
+        var data = await r.json();
+        var templates = data.data || data.templates || {};
+        var names = Object.keys(templates);
+        if (names.length === 0) { showToast('没有可用的角色卡', 'error'); return; }
+
+        // 创建覆盖层 + 角色池
+        var overlay = document.createElement('div');
+        overlay.className = 'role-pool-overlay';
+        overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+        var pool = document.createElement('div');
+        pool.className = 'role-pool';
+        pool.onclick = function(e) { e.stopPropagation(); }; // 防止点击池内冒泡到 overlay
+
+        // 头部
+        var header = document.createElement('div');
+        header.className = 'role-pool-header';
+        header.innerHTML = '<span>🎭 选择角色卡</span><span class="role-pool-close" onclick="this.closest(\'.role-pool-overlay\').remove()">✕</span>';
+        pool.appendChild(header);
+
+        // 主体
+        var body = document.createElement('div');
+        body.className = 'role-pool-body';
+        body.style.position = 'relative';
+
+        names.forEach(function(name) {
+            var t = templates[name];
+            var isBuiltin = t.is_builtin === true;
+
+            var item = document.createElement('div');
+            item.className = 'role-pool-item';
+            item.dataset.roleName = name;
+
+            // 悬停显示 soul.md 预览
+            var previewTimer = null;
+            item.addEventListener('mouseenter', function(e) {
+                clearTimeout(previewTimer);
+                clearTimeout(window._previewHideTimer);
+                previewTimer = setTimeout(function() {
+                    showRolePreview(name, e.target);
+                }, 400); // 400ms 延迟避免频繁请求
+            });
+            item.addEventListener('mouseleave', function() {
+                clearTimeout(previewTimer);
+                // 延迟 500ms 隐藏预览，给用户移到预览区域的时间
+                window._previewHideTimer = setTimeout(function() {
+                    hidePreview();
+                }, 500);
+            });
+
+            // 点击应用角色
+            item.addEventListener('click', function() {
+                overlay.remove();
+                applyRole(name);
+            });
+
+            item.innerHTML =
+                '<span class="role-pool-item-icon">' + (t.icon || '🧑') + '</span>' +
+                '<div class="role-pool-item-info">' +
+                    '<div class="role-pool-item-name">' + name + '</div>' +
+                    '<div class="role-pool-item-desc">' + (t.description || '') + '</div>' +
+                '</div>' +
+                (isBuiltin ? '<span class="role-pool-item-badge">内置</span>' : '');
+
+            // 自定义角色添加删除按钮
+            if (!isBuiltin) {
+                var delBtn = document.createElement('span');
+                delBtn.style.cssText = 'cursor:pointer; font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(239,68,68,0.12); color:#ef4444; flex-shrink:0;';
+                delBtn.textContent = '✖';
+                delBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deleteRoleTemplate(name);
+                });
+                item.appendChild(delBtn);
+            }
+
+            body.appendChild(item);
+        });
+
+        // 添加自定义角色按钮
+        var addBtn = document.createElement('div');
+        addBtn.className = 'role-pool-add';
+        addBtn.textContent = '+ 添加自定义角色';
+        addBtn.addEventListener('click', function() {
+            overlay.remove();
+            showAddRoleForm();
+        });
+        body.appendChild(addBtn);
+
+        pool.appendChild(body);
+        overlay.appendChild(pool);
+        document.body.appendChild(overlay);
+    } catch(e) {
+        console.error('toggleRoleSubmenu error:', e);
+        showToast('加载角色列表失败', 'error');
+    }
+}
+
+/**
+ * 获取并显示角色 soul.md 浮动预览
+ */
+var _previewDiv = null;
+
+function showRolePreview(roleName, targetEl) {
+    // 创建预览浮层（首次）
+    if (!_previewDiv) {
+        _previewDiv = document.createElement('div');
+        _previewDiv.className = 'floating-preview';
+        document.body.appendChild(_previewDiv);
+    }
+
+    // 计算位置：显示在 targetEl 右侧
+    var rect = targetEl.getBoundingClientRect();
+    var left = rect.right + 12;
+    var top = Math.max(4, rect.top - 10);
+    // 避免超出右侧屏幕
+    if (left + 320 > window.innerWidth) {
+        left = rect.left - 332; // 改为左侧显示
+    }
+    // 避免超出底部
+    if (top + 320 > window.innerHeight) {
+        top = window.innerHeight - 330;
+    }
+    _previewDiv.style.left = left + 'px';
+    _previewDiv.style.top = top + 'px';
+    _previewDiv.innerHTML = '<div class="preview-loading">⏳ 加载中...</div>';
+    _previewDiv.classList.add('visible');
+
+    // 鼠标移到预览浮层内时，取消隐藏延时
+    _previewDiv.onmouseenter = function() {
+        clearTimeout(window._previewHideTimer);
+    };
+    _previewDiv.onmouseleave = function() {
+        window._previewHideTimer = setTimeout(function() {
+            hidePreview();
+        }, 500);
+    };
+
+    // 异步获取 soul.md
+    fetch('/api/personality/templates/' + encodeURIComponent(roleName) + '/soul')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.content) {
+                // 简化 Markdown 渲染：转义后支持简单换行
+                var content = data.content
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                _previewDiv.innerHTML = '<div style="font-size:11px; font-weight:600; color:var(--accent-primary); margin-bottom:4px;">📄 ' + roleName + ' · soul.md</div>' +
+                    '<p>' + content + '</p>';
+            } else {
+                _previewDiv.innerHTML = '<div class="preview-error">该角色没有 soul.md 文件</div>';
+            }
+        })
+        .catch(function() {
+            _previewDiv.innerHTML = '<div class="preview-error">加载失败</div>';
+        });
+}
+
+function hidePreview() {
+    clearTimeout(window._previewHideTimer);
+    if (_previewDiv) {
+        _previewDiv.classList.remove('visible');
+    }
+}
+
+// ============================================================
+// 技能栏 - 水平 Flex-Wrap 排列
+// ============================================================
+
+/**
+ * 重写 renderSkillsCompact: 改为水平 flex-wrap 排版
+ * 每个技能一个小芯片，悬停显示技能详情预览
+ */
+function renderSkillsCompact() {
+    const container = document.getElementById('skillsCompactList');
+    const manageBtn = document.getElementById('manageSkillsBtn');
+    if (!container) return;
+
+    const skills = currentSkillsState.skills || [];
+    const equippedIds = currentSkillsState.equippedIds || [];
+
+    // 已启用的技能
+    var equippedSkills = skills.filter(function(s) { return equippedIds.indexOf(s.id) >= 0; });
+    var totalCount = skills.length;
+    var equippedCount = equippedSkills.length;
+
+    // 紧凑徽标：仅显示计数，点击展开详情
+    var html = '<div class="skills-compact-toggle" onclick="toggleSkillsExpand()">';
+    html += '<span style="font-size:13px;">🛠️</span>';
+    html += '<span style="font-size:13px; font-weight:600; color:var(--text-primary); margin-left:4px;">' + equippedCount + '</span>';
+    html += '<span style="font-size:10px; color:var(--text-muted); margin-left:2px;">/ ' + totalCount + '</span>';
+    html += '<span id="skillsExpandIcon" style="margin-left:auto; font-size:10px; color:var(--text-muted);">▶</span>';
+    html += '</div>';
+
+    // 展开详情面板（初始隐藏）
+    html += '<div id="skillsExpandPanel" class="skills-expand-panel" style="display:none; margin-top:4px;">';
+
+    skills.forEach(function(s) {
+        var isOn = equippedIds.indexOf(s.id) >= 0;
+        var sq = "'";
+        var escapedName = (s.name || s.id).replace(/'/g, '\'');
+        var escapedDesc = (s.short_description || '').replace(/'/g, '\'');
+        html += '<div class="skills-expand-item" data-skill-name="' + escapedName + '" data-skill-desc="' + escapedDesc + '" onclick="toggleSkill(' + sq + s.id + sq + ')">';
+        html += '<div class="skills-expand-item-top">';
+        html += '<span style="font-size:14px; flex-shrink:0;">' + (s.icon || '⚡') + '</span>';
+        html += '<span style="flex:1; font-size:12px; font-weight:500; color:var(--text-primary); margin-left:4px;">' + (s.name || s.id) + '</span>';
+        html += '<span style="font-size:11px; padding:1px 6px; border-radius:8px; flex-shrink:0; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.15)') + '; color:' + (isOn ? '#22c55e' : '#888') + ';">' + (isOn ? '✓ 已启用' : '禁用') + '</span>';
+        html += '</div>';
+        if (s.short_description) {
+            html += '<div class="skills-expand-item-desc">' + s.short_description + '</div>';
+        }
+        html += '</div>';
+    });
+
+    html += '</div>';
+
+    container.innerHTML = html;
+    if (manageBtn) manageBtn.style.display = 'block';
+
+    // 绑定技能悬停预览：鼠标移到技能项上时，在左侧显示 description
+    var panel = document.getElementById('skillsExpandPanel');
+    if (panel) {
+        var skillPreviewTimer = null;
+        panel.addEventListener('mouseover', function(e) {
+            var item = e.target.closest('.skills-expand-item');
+            if (!item) return;
+
+            clearTimeout(skillPreviewTimer);
+            clearTimeout(window._previewHideTimer);
+            skillPreviewTimer = setTimeout(function() {
+                var name = item.dataset.skillName || '未知技能';
+                var desc = item.dataset.skillDesc || '暂无描述';
+                // 异步获取完整 description.md（后端读取 description.md 文件）
+                var skId = item.getAttribute('onclick').match(/'([^']+)'/);
+                if (skId && skId[1]) {
+                    fetch('/api/skills/registry/' + encodeURIComponent(skId[1]) + '/detail')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (data.success && data.description) {
+                                _previewDiv.innerHTML = '<div style="font-size:11px; font-weight:600; color:var(--accent-primary); margin-bottom:4px;">⚡ ' + name + '</div>' +
+                                    '<div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">' + data.description.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</div>';
+                            }
+                        })
+                        .catch(function() {});
+                }
+
+                if (!_previewDiv) {
+                    _previewDiv = document.createElement('div');
+                    _previewDiv.className = 'floating-preview';
+                    document.body.appendChild(_previewDiv);
+                }
+
+                // 定位：显示在技能项左侧
+                var rect = item.getBoundingClientRect();
+                var left = rect.left - 332;
+                var top = Math.max(4, rect.top - 10);
+                if (left < 4) {
+                    // 左侧不够，改到右侧
+                    left = rect.right + 12;
+                }
+                if (top + 320 > window.innerHeight) {
+                    top = window.innerHeight - 330;
+                }
+                _previewDiv.style.left = left + 'px';
+                _previewDiv.style.top = top + 'px';
+                _previewDiv.innerHTML = '<div style="font-size:11px; font-weight:600; color:var(--accent-primary); margin-bottom:4px;">⚡ ' + name + '</div>' +
+                    '<div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">' + desc + '</div>';
+                _previewDiv.classList.add('visible');
+
+                _previewDiv.onmouseenter = function() {
+                    clearTimeout(window._previewHideTimer);
+                };
+                _previewDiv.onmouseleave = function() {
+                    window._previewHideTimer = setTimeout(function() {
+                        hidePreview();
+                    }, 500);
+                };
+            }, 400);
+        });
+
+        panel.addEventListener('mouseout', function(e) {
+            var item = e.target.closest('.skills-expand-item');
+            if (!item) return;
+
+            clearTimeout(skillPreviewTimer);
+            window._previewHideTimer = setTimeout(function() {
+                hidePreview();
+            }, 500);
+        });
+    }
+}
+
+/**
+ * Toggle skills expand panel open/close
+ */
+window.toggleSkillsExpand = function() {
+    var panel = document.getElementById('skillsExpandPanel');
+    var icon = document.getElementById('skillsExpandIcon');
+    if (!panel || !icon) return;
+    var isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    icon.textContent = isOpen ? '▶' : '▼';
+}
+
+/**
+ * 显示技能浮动预览
+ */
+function showSkillPreview(chip) {
+    var skillName = chip.dataset.skillName || '未知技能';
+    var desc = chip.dataset.skillDesc || '';
+    var guide = chip.dataset.skillGuide || '';
+
+    if (!_previewDiv) {
+        _previewDiv = document.createElement('div');
+        _previewDiv.className = 'floating-preview';
+        document.body.appendChild(_previewDiv);
+    }
+
+    // 计算位置
+    var rect = chip.getBoundingClientRect();
+    var left = rect.left;
+    var top = rect.bottom + 8;
+    // 如果底部不够，改到上方
+    if (top + 320 > window.innerHeight) {
+        top = rect.top - 330;
+    }
+    // 如果右侧不够，向左偏移
+    if (left + 320 > window.innerWidth) {
+        left = window.innerWidth - 330;
+    }
+    if (left < 4) left = 4;
+
+    _previewDiv.style.left = left + 'px';
+    _previewDiv.style.top = top + 'px';
+
+    var content = '<div style="font-size:11px; font-weight:600; color:var(--accent-primary); margin-bottom:4px;">⚡ ' + skillName + '</div>';
+    if (desc) {
+        content += '<div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">' + desc + '</div>';
+    }
+    if (guide) {
+        content += '<hr style="border:none; border-top:1px solid var(--border-color); margin:4px 0;">';
+        content += '<div style="font-size:10px; color:var(--text-muted); max-height:200px; overflow-y:auto;">' +
+            guide.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
+            '</div>';
+    }
+    content += '</div>';
+
+    _previewDiv.innerHTML = content;
+    _previewDiv.classList.add('visible');
+
+    _previewDiv.onmouseenter = function() {
+        clearTimeout(window._previewHideTimer);
+    };
+    _previewDiv.onmouseleave = function() {
+        window._previewHideTimer = setTimeout(function() {
+            hidePreview();
+        }, 500);
+    };
+}
+
 /* ============================================================
    TennineClaw - 前端交互逻辑（ChatGPT 风格会话管理）
    ============================================================ */
@@ -235,9 +619,22 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {HTMLElement} contentDiv - Message content container
      * @param {string} fullContent - Final complete content
      */
-    function finalizeStreamingContent(contentDiv, fullContent) {
-        // 流式完成后，使用带代码高亮的渲染
-        contentDiv.innerHTML = renderMarkdownWithHighlight(fullContent);
+    function finalizeStreamingContent(contentDiv, fullContent, orderedBlocks, wasInterrupted) {
+        var renderedHtml = fullContent ? renderMarkdownWithHighlight(fullContent) : '';
+        if (wasInterrupted) renderedHtml += '\n\n> ⏹️ 已中断';
+
+        if (typeof window.buildSegmentedHtml === 'function') {
+            var result = window.buildSegmentedHtml(orderedBlocks || [], renderedHtml, false);
+            contentDiv.innerHTML = result.html;
+        } else {
+            contentDiv.innerHTML = renderedHtml;
+        }
+
+        setTimeout(function() {
+            if (typeof window.syncRoundCollapse === 'function') {
+                window.syncRoundCollapse();
+            }
+        }, 50);
         el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
     }
 
@@ -517,6 +914,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // 发送消息 — 流式渲染版
     // ============================================================
+    // ===== Streaming display update helper (real-time) =====
+    var _streamRenderTimer = null;
+    function updateStreamingDisplay(contentDiv, orderedBlocks, responseContent, immediate) {
+        if (!immediate) {
+            if (_streamRenderTimer) return;
+            _streamRenderTimer = setTimeout(function() {
+                _streamRenderTimer = null;
+                _doStreamRender(contentDiv, orderedBlocks, responseContent);
+            }, 80);
+            return;
+        }
+        clearTimeout(_streamRenderTimer);
+        _streamRenderTimer = null;
+        _doStreamRender(contentDiv, orderedBlocks, responseContent);
+    }
+    function _doStreamRender(contentDiv, orderedBlocks, responseContent) {
+        if (contentDiv._streamDestroyed) return;
+        var renderedHtml = responseContent ? renderMarkdownWithHighlight(responseContent) : "";
+        if (typeof window.buildSegmentedHtml === "function") {
+            var result = window.buildSegmentedHtml(orderedBlocks || [], renderedHtml, true);
+            contentDiv.innerHTML = result.html;
+        } else {
+            contentDiv.innerHTML = renderedHtml + '<span class="streaming-cursor">\u258a</span>';
+        }
+        el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
+    }
+
     async function sendMessage() {
         const text = el.chatInput.value.trim();
         if (!text || state.isLoading) return;
@@ -537,7 +961,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         addMessage(text, 'user');
         const { msgDiv: assistantMsg, contentDiv } = createStreamingMessageContainer();
-        let fullContent = '';
+        let orderedBlocks = [];          // [{type:'thinking'|'tool_call', content:string}]
+        let responseContent = '';        // 回复文本
         let doneReceived = false;
         
         try {
@@ -577,8 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const data = JSON.parse(jsonStr);
                         
                         if (data.type === 'chunk') {
-                            fullContent += data.content;
-                            updateStreamingContent(contentDiv, fullContent);
+                            responseContent += data.content;
+                            updateStreamingDisplay(contentDiv, orderedBlocks, responseContent, false);
                         } else if (data.type === 'optimized_prompt') {
                             // 在用户消息和 AI 回复之间插入优化提示
                             const optDiv = document.createElement('div');
@@ -586,23 +1011,26 @@ document.addEventListener('DOMContentLoaded', () => {
                             optDiv.textContent = '✨ Prompt 已优化: ' + data.content;
                             el.messagesContainer.insertBefore(optDiv, assistantMsg);
                         } else if (data.type === 'tool_call') {
-                            fullContent += data.content;
-                            updateStreamingContent(contentDiv, fullContent);
+                            orderedBlocks.push({type:'tool_call', content: data.content});
+                            updateStreamingDisplay(contentDiv, orderedBlocks, responseContent, true);
                         } else if (data.type === 'reasoning') {
-                            fullContent += data.content;
-                            updateStreamingContent(contentDiv, fullContent);
+                            orderedBlocks.push({type:'thinking', content: data.content});
+                            updateStreamingDisplay(contentDiv, orderedBlocks, responseContent, true);
                         } else if (data.type === 'interrupted') {
-                            fullContent += data.content;
-                            updateStreamingContent(contentDiv, fullContent);
+                            responseContent += data.content;
                         } else if (data.type === 'interrupted_done') {
-                            finalizeStreamingContent(contentDiv, fullContent);
+                            clearTimeout(_streamRenderTimer);
+                            contentDiv._streamDestroyed = true;
+                            finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, true);
                             doneReceived = true;
                             await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
                             await updateSessionTitle();
                             await renderSessionList();
                         } else if (data.type === 'done') {
-                            finalizeStreamingContent(contentDiv, fullContent);
+                            clearTimeout(_streamRenderTimer);
+                            contentDiv._streamDestroyed = true;
+                            finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, false);
                             doneReceived = true;
                             await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
@@ -618,26 +1046,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-            
-            if (!doneReceived && fullContent) {
-                finalizeStreamingContent(contentDiv, fullContent);
+
+            if (!doneReceived && (responseContent || orderedBlocks.length > 0)) {
+                clearTimeout(_streamRenderTimer);
+                contentDiv._streamDestroyed = true;
+                finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, false);
                 await updateFullStatus();
                 await updateSessionTitle();
                 await checkPlanMenu();
                 await renderSessionList();
             }
-            
         } catch (error) {
             if (error.name === 'AbortError') {
-                if (fullContent) {
-                    finalizeStreamingContent(contentDiv, fullContent + '\n\n> ⏹️ 已中断');
+                if (responseContent || orderedBlocks.length > 0) {
+                    clearTimeout(_streamRenderTimer);
+                    contentDiv._streamDestroyed = true;
+                    finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, true);
                 } else {
                     contentDiv.innerHTML = '⏹️ 已取消';
                 }
                 await renderSessionList();
             } else {
-                if (fullContent) {
-                    finalizeStreamingContent(contentDiv, fullContent + `\n\n> ❌ ${error.message}`);
+                if (responseContent || orderedBlocks.length > 0) {
+                    clearTimeout(_streamRenderTimer);
+                    contentDiv._streamDestroyed = true;
+                    finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, false);
                 } else {
                     contentDiv.innerHTML = `❌ 请求失败: ${escapeHtml(error.message.replace('__SSE_ERROR__', ''))}`;
                 }
@@ -880,6 +1313,8 @@ document.addEventListener('DOMContentLoaded', () => {
             el.welcomeMessage.style.display = 'none';
         }
 
+        var _thinkCount = 0, _toolCount = 0;
+
         for (const m of messages) {
             if (m.role === 'tool') continue; // 不显示工具调用结果
 
@@ -896,7 +1331,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (m.role === 'user') {
                 contentDiv.textContent = m.content;
             } else {
-                contentDiv.innerHTML = renderMarkdownWithHighlight(m.content);
+                // ---- assistant: 使用 rounds 数据重建时序 ----
+                var blocks = [];
+                var responseText = m.content;
+
+                // 尝试匹配 round 数据
+                if (m.rounds && m.rounds.length > 0) {
+                    var result = (typeof window.roundsToBlocks === 'function')
+                        ? window.roundsToBlocks(m.rounds)
+                        : null;
+                    if (result && result.orderedBlocks && result.orderedBlocks.length > 0) {
+                        blocks = result.orderedBlocks;
+                        responseText = result.responseText || ''; // 有 rounds 则只取 rounds 中的数据，不退回 m.content
+                    }
+                }
+
+                if (blocks.length > 0 && typeof window.buildSegmentedHtml === 'function') {
+                    var renderedHtml = responseText ? renderMarkdownWithHighlight(responseText) : '';
+                    var segResult = window.buildSegmentedHtml(blocks, renderedHtml, false, _thinkCount, _toolCount);
+                    contentDiv.innerHTML = segResult.html;
+                    _thinkCount = segResult.thinkCount;
+                    _toolCount = segResult.toolCount;
+                } else {
+                    contentDiv.innerHTML = renderMarkdownWithHighlight(m.content);
+                }
             }
 
             msgDiv.appendChild(avatar);
@@ -1473,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeModal = () => overlay.remove();
         overlay.querySelector('.modal-close').onclick = closeModal;
         overlay.querySelector('.modal-cancel-btn').onclick = closeModal;
-        overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+        overlay.onclick = (e) => { if (e.target === overlay) { var ov = document.querySelector('.role-pool-overlay'); if (ov) ov.remove(); } };
         overlay.querySelector('.modal-confirm-btn').onclick = async () => {
             const name = overlay.querySelector('#addModelName').value.trim();
             const code = overlay.querySelector('#addModelCode').value.trim();
@@ -1604,12 +2062,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         html.setAttribute('data-theme', newTheme);
         el.themeToggle.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-        localStorage.setItem('theme', newTheme);
+        try { localStorage.setItem('theme', newTheme); } catch(e) {};
         setHighlightTheme(newTheme);
     }
 
     function loadTheme() {
-        const savedTheme = localStorage.getItem('theme') || 'dark';
+        const savedTheme = (function(){try{return localStorage.getItem('theme')}catch(e){return null}})() || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
         el.themeToggle.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
         setHighlightTheme(savedTheme);
@@ -1955,9 +2413,11 @@ var __templateCache = {};
 // Global template cache
 var __templateCache = {};
 
+async function closeRoleSubmenu() { var ov = document.querySelector('.role-pool-overlay'); if (ov) ov.remove(); }
+
 async function applyRole(roleName) {
     console.log('[applyRole] Starting for:', roleName);
-    closeModal();
+    closeRoleSubmenu();
     try {
         // Check cache
         var tmpl = __templateCache[roleName];
@@ -2283,39 +2743,7 @@ async function deleteCustomSkillFromModal(skillId, skillName) {
     }
 }
 
-function renderSkillsCompact() {
-    const container = document.getElementById('skillsCompactList');
-    const manageBtn = document.getElementById('manageSkillsBtn');
-    if (!container) return;
-    
-    const skills = currentSkillsState.skills || [];
-    const equippedIds = currentSkillsState.equippedIds || [];
-    
-    if (skills.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:8px; color:var(--text-muted); font-size:11px;">暂无可用技能</div>';
-        if (manageBtn) manageBtn.style.display = 'none';
-        return;
-    }
-    
-    let html = '';
-    // Show first 5 skills
-    const showSkills = skills.slice(0, 5);
-    showSkills.forEach(function(s) {
-        const isOn = equippedIds.includes(s.id);
-        html += '<div style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:4px; margin:2px 0;">';
-        html += '<span>' + (s.icon || '\u26a1') + '</span>';
-        html += '<span style="flex:1; font-size:12px; color:var(--text-primary);">' + (s.name || s.id) + '</span>';
-        html += '<span onclick="toggleSkill(\'' + s.id + '\')" style="cursor:pointer; font-size:14px; padding:2px 6px; border-radius:4px; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.2)') + '; color:' + (isOn ? '#22c55e' : '#666') + ';">' + (isOn ? '\u2714\ufe0f' : '\u274c') + '</span>';
-        html += '</div>';
-    });
-    
-    if (skills.length > 5) {
-        html += '<div style="text-align:center; font-size:10px; color:var(--text-muted); padding:2px;">+' + (skills.length - 5) + ' more</div>';
-    }
-    
-    container.innerHTML = html;
-    if (manageBtn) manageBtn.style.display = 'block';
-}
+
 
 function toggleSkill(skillId) {
     // Check if currently equipped (local state)

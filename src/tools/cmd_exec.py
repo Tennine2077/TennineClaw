@@ -67,12 +67,12 @@ def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
             output = proc.stdout
             if not output.strip():
                 return "✅ 命令执行成功（无输出）"
-            if len(output) > 10000:
-                output = output[:10000] + f"\n\n...（输出过长，已截断至 10000 字符，共 {len(output)} 字符）"
+            if len(output) > 100000:
+                output = output[:100000] + f"\n\n...（输出过长，已截断至 100000 字符，共 {len(output)} 字符）"
             return output
         else:
             error_msg = proc.stderr.strip() if proc.stderr.strip() else "未知错误"
-            return f"❌ 命令执行失败 (返回码: {proc.returncode})\n错误信息: {error_msg[:2000]}"
+            return f"❌ 命令执行失败 (返回码: {proc.returncode})\n错误信息: {error_msg[:10000]}"
     except subprocess.TimeoutExpired:
         return "⚠️ 命令执行超时（30秒），已自动终止"
     except Exception as e:

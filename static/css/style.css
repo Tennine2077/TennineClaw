@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    TennineClaw - �ִ��� UI ��ʽ
    ֧����ɫ/ǳɫ˫���� + ��Ӧʽ���
    v1.0.0 - ������ʽ��Ⱦ��궯�� + ���ߵ���/˼��������ʽ
@@ -1685,4 +1685,587 @@ html, body {
 }
 .role-empty {
     padding: 8px 0;
+}
+
+
+/* ============================================================
+   技能菜单按钮 & 下拉菜单
+   ============================================================ */
+
+
+/* 技能菜单容器 */
+.skill-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    background: transparent;
+}
+.skill-menu {
+    position: fixed;
+    top: 48px;
+    right: 60px;
+    width: 460px;
+    max-height: 520px;
+    overflow-y: visible;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    padding: 6px 0;
+}
+.skill-menu-header {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* 二级菜单项（每个技能） */
+.skill-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    min-height: 32px;
+}
+.skill-menu-item:hover {
+    background: rgba(128,128,128,0.08);
+}
+.skill-menu-item.active {
+    background: var(--accent-bg, rgba(99,102,241,0.12));
+    border-left: 2px solid var(--accent-primary);
+}
+.skill-menu-item .skill-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.skill-menu-item .skill-name {
+    font-size: 12px;
+    color: var(--text-primary, #eee);
+    flex: 1;
+}
+.skill-menu-item .skill-arrow {
+    font-size: 10px;
+    color: var(--text-muted, #666);
+    margin-left: 6px;
+}
+
+/* 三级菜单（角色列表） */
+.skill-submenu {
+    position: absolute;
+    right: 100%;
+    top: -4px;
+    width: 240px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    z-index: 1001;
+    padding: 4px 0;
+    margin-right: 4px;
+    display: none;
+    max-height: 320px;
+    overflow-y: auto;
+}
+.skill-submenu.open {
+    display: block;
+}
+.skill-submenu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 4px;
+    margin: 1px 4px;
+}
+.skill-submenu-item .check-icon {
+    font-size: 12px;
+    width: 16px;
+    text-align: center;
+}
+
+/* 底部保存按钮 */
+.skill-menu-footer {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    gap: 8px;
+}
+.skill-menu-save-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent-primary);
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.skill-menu-save-btn:hover {
+    opacity: 0.85;
+}
+.skill-menu-save-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.skill-menu-empty {
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+
+/* ===== Thinking fold container ===== */
+.thinking-container {
+    margin: 6px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.thinking-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: default;
+    user-select: none;
+}
+
+.thinking-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.thinking-toggle-btn {
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.thinking-toggle-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.thinking-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.thinking-body {
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    border-top: 1px solid var(--border-light);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 500px;
+    overflow-y: auto;
+    display: none;
+    background: rgba(0,0,0,0.03);
+}
+
+.thinking-body.expanded {
+    display: block;
+}
+
+/* ============================================================
+   分段流式输出样式（thinking / tool calls / response）
+   ============================================================ */
+
+/* Thinking 折叠区块 */
+.thinking-block {
+    margin: 8px 0;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.thinking-block .thinking-header {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    user-select: none;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-start;
+}
+
+.thinking-block .thinking-content {
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Tool call 折叠区块 */
+.toolcall-block {
+    margin: 8px 0;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.toolcall-block .toolcall-header {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-warning);
+    user-select: none;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-start;
+}
+
+.toolcall-block .toolcall-content {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.toolcall-block .toolcall-content pre {
+    background: var(--bg-code);
+    color: var(--text-inverse);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Indiv Block - 每个推理/工具调用独立折叠 */
+.indiv-block {
+    margin: 6px 0;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.indiv-block .indiv-header {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.indiv-block .indiv-content {
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border-light);
+}
+
+.indiv-block .indiv-content pre {
+    margin: 0;
+    background: transparent;
+    color: inherit;
+}
+
+/* Response 区块 - 最终 AI 回复 */
+.response-block {
+    margin: 8px 0;
+    padding: 0;
+    line-height: 1.7;
+}
+
+.response-block:first-child {
+    margin-top: 0;
+}
+
+/* 流式光标 */
+.streaming-cursor {
+    display: inline-block;
+    animation: blink 1s step-end infinite;
+    color: var(--accent-primary);
+    font-weight: bold;
+}
+
+/* 流式等待指示器（非流式渲染时使用） */
+.streaming-waiting {
+    padding: 16px 0;
+    font-size: 13px;
+    color: var(--text-muted, #888);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+
+/* ============================================================
+   Role Pool (left-side floating)
+   ============================================================ */
+.role-pool-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    background: rgba(0,0,0,0.2);
+}
+.role-pool {
+    position: fixed;
+    top: 110px;
+    right: 370px;
+    width: 280px;
+    max-height: 70vh;
+    z-index: 1000;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.role-pool-header {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.role-pool-close {
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-muted, #888);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.role-pool-close:hover {
+    background: rgba(255,255,255,0.1);
+}
+.role-pool-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+.role-pool-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 2px 0;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+}
+.role-pool-item:hover {
+    background: rgba(99,102,241,0.1);
+    border-color: var(--border-color, #383850);
+}
+.role-pool-item-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.role-pool-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.role-pool-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #e0e0e0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.role-pool-item-desc {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.role-pool-item-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(99,102,241,0.12);
+    color: #818cf8;
+    flex-shrink: 0;
+}
+.role-pool-add {
+    cursor: pointer;
+    width: 100%;
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px dashed var(--border-color, #383850);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--accent-primary, #818cf8);
+    font-size: 11px;
+    text-align: center;
+}
+
+/* ============================================================
+   Floating Preview (shared: roles + skills)
+   ============================================================ */
+.floating-preview {
+    position: fixed;
+    z-index: 1001;
+    width: 320px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text-primary, #e0e0e0);
+    line-height: 1.5;
+    display: none;
+}
+.floating-preview.visible {
+    display: block;
+}
+.floating-preview h1,
+.floating-preview h2,
+.floating-preview h3 {
+    font-size: 13px;
+    margin: 6px 0 3px;
+    color: var(--accent-primary, #818cf8);
+}
+.floating-preview p {
+    margin: 3px 0;
+}
+.floating-preview strong {
+    color: var(--text-primary, #e0e0e0);
+}
+.floating-preview .preview-loading {
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+.floating-preview .preview-error {
+    color: #ef4444;
+}
+
+/* ============================================================
+   Skills Compact Toggle (expand on click)
+   ============================================================ */
+.skills-compact-toggle {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    transition: background 0.15s;
+    user-select: none;
+}
+.skills-compact-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+.skills-expand-item {
+    padding: 5px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 2px 0;
+    border: 1px solid transparent;
+    transition: background 0.15s;
+}
+.skills-expand-item:hover {
+    background: var(--bg-tertiary);
+}
+.skills-expand-item-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.skills-expand-item-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.4;
+    padding-left: 18px;
+}
+
+
+.skills-expand-panel {
+    max-height: 180px;
+    overflow-y: auto;
 }

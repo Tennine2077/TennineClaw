@@ -362,6 +362,7 @@ class AgentSessionStreamMixin:
                         # 收集 reasoning_content（思考过程）
                         if hasattr(delta, "reasoning_content") and delta.reasoning_content:
                             collected_reasoning += delta.reasoning_content
+                            # 非流式：只收集不yield，等完整后一次性输出
 
                         # 收集 content（回复文本）
                         if delta.content:
@@ -425,7 +426,8 @@ class AgentSessionStreamMixin:
                     has_reasoning = bool(collected_reasoning and collected_reasoning.strip())
                     if has_reasoning:
                         reasoning_summary = _get_reasoning_summary(collected_reasoning)
-                        yield f"💭 *推理摘要*: {reasoning_summary}\n\n---\n\n"
+                        yield f"__REASONING__{collected_reasoning}"
+                        # 推理摘要已在 __REASONING__ 中发送
 
                     # 执行每个工具
                     for idx in sorted(tool_calls_data.keys()):
@@ -448,11 +450,11 @@ class AgentSessionStreamMixin:
                             "content": str(result)
                         })
 
-                        # 流式输出工具调用信息
-                        yield f"\n🔧 调用工具: {func_name}(...工具结果已返回...)\n"
+                        # 非流式：工具调用信息完整内容一次性输出
+                        tool_text = f"🔧 {func_name}\n参数: {func_args}\n返回结果: {str(result)[:10000]}"
+                        yield f"__TOOL_CALL__{tool_text}"
 
                     # 继续循环，处理下一轮
-                    continue
 
                 # ---- 没有工具调用：输出回复 ----
                 else:
@@ -463,16 +465,12 @@ class AgentSessionStreamMixin:
                         # 简洁显示推理摘要（如有）
                         if has_reasoning:
                             reasoning_summary = _get_reasoning_summary(collected_reasoning)
-                            yield f"💭 *推理摘要*: {reasoning_summary}\n\n---\n\n"
+                            yield f"__REASONING__{collected_reasoning}"
+                            # 推理摘要已在 __REASONING__ 中发送
                         
-                        # 逐段落输出内容
-                        chunks = _split_into_paragraphs(content)
-                        for i, chunk in enumerate(chunks):
-                            yield chunk
-                            # 段落间添加小小的延迟效果（由前端控制，这里只是分段）
-                            if i < len(chunks) - 1:
-                                yield "\n\n"
-                        
+                        yield "__FINAL__"
+                        # 非流式：最终内容一次性完整输出
+                        yield content
                         # 保存助手消息（包含推理内容以备后用）
                         assistant_msg = {"role": "assistant", "content": content}
                         if collected_reasoning:

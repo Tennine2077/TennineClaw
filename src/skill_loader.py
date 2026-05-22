@@ -17,6 +17,7 @@ skills_custom/          # 用户自定义技能（与内置分开存储）
 
 import os
 import json
+from typing import Optional
 
 # 项目根目录
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -155,4 +156,20 @@ def delete_custom_skill(skill_id_or_name: str) -> bool:
         return True
     return False
 
-
+
+def load_skill_description(skill_id_or_name: str) -> Optional[str]:
+    """
+    读取技能的 description.md 文件内容。
+    先搜 skills_custom/，再搜 skills/。
+    """
+    # skills_custom 优先
+    for base, name in [(CUSTOM_SKILLS_DIR, skill_id_or_name), (SKILLS_DIR, skill_id_or_name)]:
+        desc_file = os.path.join(base, name, "description.md")
+        if os.path.isfile(desc_file):
+            try:
+                with open(desc_file, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                pass
+    return None
+

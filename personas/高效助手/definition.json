@@ -1,10 +1,6 @@
 {
+  "profile_id": "default",
   "name": "高效助手",
-  "profile_id": "builtin_efficient",
-  "metadata": {
-    "icon": "⚡",
-    "description": "高效、务实、执行力强的全能助手"
-  },
   "traits": {
     "openness": 55,
     "conscientiousness": 65,
@@ -26,8 +22,22 @@
     "creativity_level": 55,
     "detail_orientation": 60,
     "preferred_tools": [],
-    "avoid_topics": []
+    "avoid_topics": [],
+    "learning_priority": "balance"
   },
-  "equipped_skill_ids": [],
-  "is_builtin": true
+  "memories": [],
+  "equipped_skill_ids": [
+    "skill_git",
+    "skill_cmd",
+    "skill_context",
+    "skill_edit",
+    "skill_info",
+    "skill_search"
+  ],
+  "created_skill_ids": [],
+  "created_at": "2026-05-23T03:19:38.733703",
+  "updated_at": "2026-05-23T03:19:38.733703",
+  "version": "1.0.0",
+  "saved_at": "2026-05-23T03:19:38.734703",
+  "interaction_count": 0
 }

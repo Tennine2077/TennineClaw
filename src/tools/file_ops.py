@@ -16,7 +16,7 @@ def tool_read_file(path: str = "") -> str:
         path: 文件路径
 
     Returns:
-        文件内容字符串；文件过长时自动截断至 20000 字符；
+        文件内容字符串；文件过长时自动截断至 100000 字符；
         文件不存在或权限不足时返回错误信息
     """
     if not path:
@@ -24,8 +24,8 @@ def tool_read_file(path: str = "") -> str:
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
-        if len(content) > 20000:
-            content = content[:20000] + f"\n\n...（文件过长，已截断至 20000 字符，共 {len(content)} 字符）"
+        if len(content) > 100000:
+            content = content[:100000] + f"\n\n...（文件过长，已截断至 100000 字符，共 {len(content)} 字符）"
         return content
     except FileNotFoundError:
         return f"❌ 文件不存在: {path}"

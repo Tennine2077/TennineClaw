@@ -303,6 +303,11 @@ class PersonalityProfile:
     language_style: LanguageStyle = field(default_factory=LanguageStyle)
     behavior_prefs: BehaviorPreference = field(default_factory=BehaviorPreference)
     memories: List[MemoryFragment] = field(default_factory=list)
+    # ============================================================
+    # [已废弃] equipped_skill_ids — 请改用技能端的 used_by_personas
+    # 保留此字段仅用于向后兼容，新增/修改请通过技能管理API操作
+    # 读取时建议使用 get_equipped_skill_ids() 方法（自动从技能端反查）
+    # ============================================================
     equipped_skill_ids: List[str] = field(default_factory=list)   # 已装备的技能 IDs
     created_skill_ids: List[str] = field(default_factory=list)    # 该人格创造的技能 IDs
     created_at: str = ""
@@ -418,6 +423,27 @@ class PersonalityProfile:
 # 自定义人格模板
 # ============================================================
 
+
+    def get_equipped_skill_ids(self) -> list:
+        """
+        获取该人格加载的技能ID列表。
+        优先从技能端的 used_by_personas 反查（新方式），
+        回退到本地的 equipped_skill_ids 字段（旧方式，已废弃）。
+        """
+        try:
+            from .skill_models import load_global_skill_registry
+            registry = load_global_skill_registry()
+            result = []
+            for sid, skill_data in registry.items():
+                users = skill_data.get("used_by_personas", [])
+                if self.name in users:
+                    result.append(sid)
+            if result:
+                return result
+        except Exception:
+            pass
+        return self.equipped_skill_ids
+
 @dataclass
 class CustomPersonalityTemplate:
     """用户自定义人格模板"""
@@ -427,6 +453,11 @@ class CustomPersonalityTemplate:
     traits: PersonalityTrait = field(default_factory=PersonalityTrait)
     language_style: LanguageStyle = field(default_factory=LanguageStyle)
     behavior_prefs: BehaviorPreference = field(default_factory=BehaviorPreference)
+    # ============================================================
+    # [已废弃] equipped_skill_ids — 请改用技能端的 used_by_personas
+    # 保留此字段仅用于向后兼容，新增/修改请通过技能管理API操作
+    # 读取时建议使用 get_equipped_skill_ids() 方法（自动从技能端反查）
+    # ============================================================
     equipped_skill_ids: List[str] = field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""

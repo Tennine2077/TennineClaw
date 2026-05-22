@@ -21,11 +21,12 @@
             <div class="logo">
                 <span class="logo-icon">🧠</span>
                 <span class="logo-text">TennineClaw</span>
-                <span class="version-badge" id="versionBadge">v1.0.0</span>
+                <span class="version-badge" id="versionBadge">v1.1.1</span>
             </div>
         </div>
         <div class="header-right">
-            <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+            <button class="theme-toggle" id="skillMenuBtn" title="技能管理">⚙️</button>
+    <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
             
             <span class="status-dot" id="statusDot"></span>
             <span class="status-label">在线</span>
@@ -136,7 +137,7 @@
                           <div class="role-card" id="roleCard" style="display:flex; align-items:center; gap:8px;">
                         <span class="role-icon" id="roleIcon" style="font-size:24px; flex-shrink:0;">🧑</span>
                         <span class="role-name" id="roleName" style="flex:1; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">默认助手</span>
-                        <button class="btn btn-change-role" id="changeRoleBtn" style="flex-shrink:0; font-size:10px; padding:3px 8px; border-radius:4px; background:rgba(99,102,241,0.15); color:#818cf8; border:none; cursor:pointer;" onclick="showRoleSelector()" title="切换角色">🔄</button>
+                        <button class="btn btn-change-role" id="changeRoleBtn" style="flex-shrink:0; font-size:10px; padding:3px 8px; border-radius:4px; background:rgba(99,102,241,0.15); color:#818cf8; border:none; cursor:pointer;" onclick="toggleRoleSubmenu()" title="切换角色">🔄</button>
                     </div>
                           <div class="role-empty" id="roleEmpty" style="display:none;">
                         <button class="btn btn-primary" onclick="showRoleSelector()" style="width:100%; font-size:11px; padding:5px 8px; border-radius:5px; border:none; cursor:pointer; background:rgba(99,102,241,0.2); color:#818cf8;">
@@ -150,10 +151,10 @@
                 <div class="panel-header">
                     <span>🛠️ 当前技能</span>
                 </div>
-                <div class="panel-body" style="text-align:center;">
-                    <button class="btn btn-manage-skills" onclick="openSkillManagerModal()" style="width:100%; padding:6px; border-radius:5px; background:rgba(99,102,241,0.1); color:#818cf8; border:none; cursor:pointer; font-size:12px;" id="manageSkillsBtn">
-                        ⚙️ 管理技能
-                    </button>
+                <div class="panel-body" style="padding:0;">
+                    <div id="skillsCompactList" style="width:100%;">
+                        <div style="text-align:center; padding:12px; color:var(--text-muted); font-size:11px;">加载中...</div>
+                    </div>
                 </div>
             </div>
 
@@ -286,8 +287,23 @@
     <!-- 代码语法高亮: highlight.js -->
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/highlight.min.js"></script>
     <!-- 项目脚本 -->
+    <script src="/static/js/utils/dom.js?v=v75412533"></script>
+    <script src="/static/js/utils/markdown.js?v=v75412533"></script>
+    <script src="/static/js/core/thinking.js?v=v75412533"></script>
+    <script src="/static/js/ui/theme.js?v=v75412533"></script>
+    <script src="/static/js/ui/debug.js?v=v75412533"></script>
+    <script src="/static/js/core/message.js?v=v75412533"></script>
+    <script src="/static/js/core/session.js?v=v75412533"></script>
+    <script src="/static/js/ui/status.js?v=v75412533"></script>
+    <script src="/static/js/ui/plan.js?v=v75412533"></script>
+    <script src="/static/js/ui/env.js?v=v75412533"></script>
+    <script src="/static/js/skills/role.js?v=v75412533"></script>
+    <script src="/static/js/skills/skills.js?v=v75412533"></script>
+    <script src="/static/js/skills/skill-menu.js?v=v75412533"></script>
     <script src="/static/js/api.js?v=v75412532"></script>
     <script src="/static/js/app.js?v=v75412532"></script>
+    <script src="/static/js/patch_segmented.js?v=v75412532"></script>
     <script src="/static/js/personality.js?v=v75412532"></script>
+    <script src="/static/js/skill_manager.js?v=v75412532"></script>
 </body>
 <!-- v75412532 --></html>

@@ -1,0 +1,126 @@
+{
+  "id": "skill_pdf",
+  "name": "PDF 阅读大师",
+  "icon": "📖",
+  "type": "active",
+  "tier": "basic",
+  "short_description": "精通 PDF 文档的加载、解析、文本提取与搜索，高效处理各类 PDF 文档",
+  "tags": [
+    "PDF",
+    "文档",
+    "阅读",
+    "搜索"
+  ],
+  "is_builtin": false,
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "pdf_load",
+      "description": "加载 PDF 文件，返回页数、元数据、目录结构和是否有文本层等信息",
+      "module": "pdf_ops.py",
+      "function": "tool_pdf_load",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PDF 文件的本地绝对路径，如 D:/docs/paper.pdf"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "pdf_read_page",
+      "description": "读取 PDF 指定页码的文本内容",
+      "module": "pdf_ops.py",
+      "function": "tool_pdf_read_page",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PDF 文件的本地绝对路径"
+          },
+          "page_num": {
+            "type": "integer",
+            "description": "页码（从 1 开始）"
+          }
+        },
+        "required": [
+          "path",
+          "page_num"
+        ]
+      }
+    },
+    {
+      "name": "pdf_search",
+      "description": "在 PDF 中搜索关键词，返回匹配的页码和上下文",
+      "module": "pdf_ops.py",
+      "function": "tool_pdf_search",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PDF 文件的本地绝对路径"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "搜索关键词"
+          },
+          "max_results": {
+            "type": "integer",
+            "description": "最大返回结果数（默认 10，最大 50）"
+          }
+        },
+        "required": [
+          "path",
+          "keyword"
+        ]
+      }
+    },
+    {
+      "name": "pdf_metadata",
+      "description": "提取 PDF 文件的元数据信息（标题、作者、主题、创建日期等）",
+      "module": "pdf_ops.py",
+      "function": "tool_pdf_metadata",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PDF 文件的本地绝对路径"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "pdf_toc",
+      "description": "提取 PDF 的目录/书签结构",
+      "module": "pdf_ops.py",
+      "function": "tool_pdf_toc",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PDF 文件的本地绝对路径"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  ],
+  "used_by_personas": [
+    "Tennine",
+    "喵小糖"
+  ]
+}

@@ -2,7 +2,7 @@
 
 > Intelligent Terminal Assistant · AI-Powered Code Analysis & Task Execution Platform
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
@@ -16,6 +16,7 @@ TennineClaw is a feature-rich AI programming assistant web platform, supporting 
 
 | Date | Version | Description |
 |------|---------|-------------|
+| May 23, 2026 | **v1.1.1** | 🎨 **UI Overhaul**: Refactored skill management modal (standalone popup, real-time toggle, add/delete custom skills), optimized role management UI (role switching, soul.md display), independent collapsible sections for reasoning process & tool calls |
 | May 22, 2026 | v1.1.0 | Custom role system (personas/ dynamic scanning), skill management modal (add/delete/toggle), personality template dynamic loading, soul.md soul definition, role switching & skill sync bug fixes |
 | May 19, 2026 | v1.0.0 | First official release: Web UI (FastAPI + SSE Streaming), 19 tools, built-in Composer context compression, session management, Smart/Plan dual modes |
 
@@ -25,7 +26,7 @@ TennineClaw is a feature-rich AI programming assistant web platform, supporting 
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **AI Chat** | Streaming responses, supporting DeepSeek and other models |
+| 🤖 **AI Chat** | Streaming responses, supporting DeepSeek and other models; separate sections for reasoning & replies |
 | 🔍 **Grep Search** | Recursive file content search with file filtering + context display |
 | ⚡ **Command Execution** | Safety-checked system command execution with timeout control |
 | 📁 **File Operations** | Read/Write/Delete/Replace/Compare with paginated viewing |
@@ -34,10 +35,12 @@ TennineClaw is a feature-rich AI programming assistant web platform, supporting 
 | 💬 **Session Management** | Auto file saving, support for grouping, searching, renaming |
 | 🧩 **Context Compression** | Auto/Manual/Micro compression to prevent Token overflow |
 | 📊 **Token Monitoring** | Real-time display of input/output Token counts and ratios |
-| 🎭 **Custom Roles** | Dynamic role loading from personas/ directory, complete personality definitions (OCEAN Big Five, language style, behavior preferences) + soul.md soul definition |
-| 🛠️ **Skill Management Modal** | Streamlined skill panel with management button, opens independent modal for skill toggling, adding (name+description+guide), and deleting custom skills |
-| 🧩 **Dynamic Template Scanning** | Built-in templates exported to personas/ directory, all roles auto-discovered from filesystem, no hardcoding required |
-| 🌓 **Theme Switching** | Dark/Light theme support |
+| 🎭 **Custom Roles** | Dynamic role loading from personas/ directory, complete personality definition (OCEAN five-factor model, language style, behavior preferences) + soul.md soul definition; optimized role switching UI |
+| 🛠️ **Skill Management** | Standalone popup modal with real-time toggle, add custom skill (name+description+guide), delete custom skills, fully refactored UI |
+| 🧩 **Dynamic Template Discovery** | Built-in templates exported to Personas directory; all roles auto-discovered from filesystem, no hardcoding needed |
+| 💭 **Reasoning Display** | Each reasoning step in its own collapsible block with global collapse/expand, state persisted via localStorage |
+| 🔧 **Tool Call Display** | Each tool invocation as a separate collapsible section with clearly separated parameters and results, global collapse/expand support |
+| 🌓 **Theme Toggle** | Dark/Light theme |
 
 ---
 
@@ -57,12 +60,12 @@ pip install -r requirements.txt
 python -m src.web_api
 ```
 
-### 3. API Configuration
+### 3. Configure API
 
-1. Open your browser and visit **http://127.0.0.1:7860**
+1. Open browser and navigate to **http://127.0.0.1:7860**
 2. Click the **⚙️** button next to the model selector in the top-right corner
 3. Enter your API Key and Base URL
-4. Configuration is automatically persisted — no need to set it again on next launch
+4. Configuration is automatically persisted — no need to re-enter on restart
 
 > API configuration is managed entirely through the Web UI. No need to edit `.env` files.
 
@@ -72,259 +75,167 @@ python -m src.web_api
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ 🧠 TennineClaw               🌓 Theme Toggle  [Model ▼] [⚙️] │
+│ 🧠 TennineClaw               🌓 Theme Toggle   [Model ▼] [⚙️] │
 ├─────────────────┬──────────────────────────────────┬──────────────────────┤
-│ Left Panel      │ Center Area                      │ Right Panel          │
-│ 💬 New Chat     │                                   │ 🤖 Model Info       │
-│ 📂 History      │  🧠 Chat Area                     │ 🧩 Composer Status  │
-│ ─────────       │                                   │ 📊 Token Usage      │
-│ 📁 Session A    │  🧑 User Message                  │ 📝 Details          │
-│ 📁 Session B    │  🤖 AI Response...               │                      │
-│ ─────────       │                                   │                      │
-│ 📁 Session C    │                                   │                      │
-│ 📁 ...          │                                   │                      │
+│ Left Panel      │ Center Area                       │ Right Panel          │
+│ 💬 New Chat     │                                   │ 🤖 Model Info        
+│ 📋 Session List │   🤖 AI Chat Area                 │ 🧩 Loaded Skills     
+│ 🔍 Search       │   ┌──────────────────────┐       │ 🎭 Current Role      
+│                 │   │ 💭 Reasoning (fold)   │       │ 📊 Token Stats       
+│                 │   ├──────────────────────┤       │                      │
+│                 │   │ 🔧 Tool Call (fold)   │       │                      │
+│                 │   ├──────────────────────┤       │                      │
+│                 │   │ 💬 AI Response        │       │                      │
+│                 │   └──────────────────────┘       │                      │
+│                 │                                   │                      │
+│                 │   [📝 Type a message...] [Send]   │                      │
 ├─────────────────┴──────────────────────────────────┴──────────────────────┤
+│ 🔌 Shortcuts: Ctrl+Enter Send · Ctrl+Shift+Enter Newline · ↑↓ History    │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Tool List
+## 🧩 Skill System
 
-### File Search
+The skill system is the core extensibility mechanism of TennineClaw, supporting flexible combination and dynamic loading of skills.
 
-| Command | Function | Example |
-|---------|----------|---------|
-| `grep` | Recursive file content search | `grep("def __init__", glob="*.py", context=2)` |
-| `replace` | Batch replace, preview by default | `replace("old", "new", dry_run=True)` |
-| `find_files` | Search files by extension | `find_files("*.py", sort_by="size")` |
-| `count_lines` | Count lines of code | `count_lines(pattern="*.py,*.js")` |
-| `diff` | Compare file contents | `diff("a.py", "b.py")` |
-| `show_file` | View file with line numbers | `show_file("main.py", start=50, count=30)` |
+### Built-in Skills
 
-### Git
+| Skill | Description |
+|-------|-------------|
+| 🔍 **File Search Master** | Proficient in file search and content retrieval |
+| 🧠 **Context Manager** | Context management and compression for efficient conversations |
+| 💻 **Shell Commander** | System command execution and command-line operations |
+| 📊 **Intelligence Analyst** | System information collection and analysis |
+| 📝 **Code Modifier** | File reading/writing and code editing |
 
-| Command | Function |
-|---------|----------|
-| `git_status` | View repo status, including branch, remote, ahead/behind |
-| `git_log` | View commit history with branch/author filtering |
-| `git_diff` | View unstaged changes |
-| `git_commit_stats` | Count file changes and commits |
+### Custom Skills
 
-### System
-
-| Command | Function |
-|---------|----------|
-| `run_cmd` | Execute system commands (with safety checks) |
-| `read_file` / `write_file` | File read/write |
-| `list_files` / `create_directory` | Directory management |
-| `get_system_info` | System information query |
-| `get_current_time` | Current time |
+Define custom skills in the `skills_custom/` directory via `skill.json`. The system automatically discovers and loads them.
 
 ---
 
-## 🏗️ Architecture
+## 🎭 Persona System
 
-```
-┌──────────────────────────────────────────────────────────┐
-│         Web UI (FastAPI + Static Files)                  │
-│   static/index.html + style.css + app.js                │
-├──────────────────────────────────────────────────────────┤
-│           web_api.py (API Route Layer)                   │
-├──────────────────────────────────────────────────────────┤
-│      main.py / main_stream.py (Chat Processing)          │
-├──────────────────────────────────────────────────────────┤
-│   tools/                                                 │
-│   ├── __init__.py    Tool Registration                   │
-│   ├── cmd_exec.py    System Command Execution            │
-│   ├── file_ops.py    File Read/Write                     │
-│   ├── dir_ops.py     Directory Operations                │
-│   ├── info_ops.py    System Information                  │
-│   ├── search_ops.py  Grep / Replace / Count              │
-│   └── git_ops.py     Git Operations                      │
-├──────────────────────────────────────────────────────────┤
-│   Support Layer                                          │
-│   ├── context.py         Context Management & Compression│
-│   ├── session_manager.py Session Save/Load/Register      │
-│   ├── safety.py          Command Safety Detection        │
-│   ├── prompts.py         System Prompt Templates         │
-│   ├── prompt_optimizer.py Prompt Optimization            │
-│   ├── token_utils.py     Token Usage Utilities           │
-│   └── mode_manager.py    Mode Management                 │
-└──────────────────────────────────────────────────────────┘
-```
+The persona system gives the AI assistant personality traits, including character, language style, and behavior preferences.
 
-## 📁 Project Structure
+### Built-in Personas
+
+| Persona | Description |
+|---------|-------------|
+| 🧑‍💻 **Tennine** | Default persona — a quirky AI assistant sprite, reliable yet playful |
+| 🧑‍🔧 **Strict Engineer** | Professional, precise, specification-focused programming assistant |
+| 🎨 **Creative Geek** | Imaginative, innovation-oriented tech partner |
+| 😺 **Miao Xiaotang** | Cute-style AI assistant with an adorable communication style |
+| ⚡ **Efficient Assistant** | Concise, direct, efficiency-focused task executor |
+
+### Creating Custom Personas
+
+1. Create a new folder under `personas/` (e.g., `personas/MyPersona/`)
+2. Create `personality.json` to define personality parameters
+3. (Optional) Create `soul.md` to write the persona's soul definition and core settings
+4. Refresh the page — the persona will automatically appear in the list
+
+---
+
+## 💻 Technical Architecture
 
 ```
 TennineClaw/
-├── __init__.py              # Package init + version
-├── config.py                # Configuration (persistent + defaults)
-├── main.py                  # Core chat logic
-├── main_stream.py           # Streaming chat logic
-├── web_api.py               # FastAPI Web interface (37 routes)
-│
-├── session_manager.py       # Session persistence + global registry
-├── context.py               # Context compression (Micro/Auto/Manual)
-├── mode_manager.py          # Smart / Plan mode management
-├── prompt_optimizer.py      # User input prompt optimization
-├── prompts.py               # System prompt templates
-├── safety.py                # System command safety detection
-├── token_utils.py           # Token usage & formatting
-│
-├── requirements.txt         # Python dependencies
-├── run.bat / run.ps1        # Windows startup scripts
-│
-├── tools/                   # Function Calling toolset
-│   ├── __init__.py          # Tool registration decorator
-│   ├── cmd_exec.py          # System command execution
-│   ├── file_ops.py          # File read/write
-│   ├── dir_ops.py           # Directory operations
-│   ├── info_ops.py          # System info query
-│   ├── search_ops.py        # Grep / Replace / Line count
-│   └── git_ops.py           # Git status / log / diff
-│
-└── static/                  # Frontend static resources
-    ├── index.html           # Main page
-    ├── js/api.js            # API call wrapper
-    ├── js/app.js            # Frontend interaction logic
-    └── css/style.css        # Styles (Dark/Light theme)
+├── src/                    # Core backend code
+│   ├── main.py             # Agent session main logic
+│   ├── main_stream.py      # Streaming conversation module (SSE)
+│   ├── web_api.py          # FastAPI web service
+│   ├── config.py           # Global configuration
+│   ├── context.py          # Triple context composer (Micro/Auto/Manual)
+│   ├── session_manager.py  # Session management (save/load/list)
+│   ├── skill_engine.py     # Skill engine (load/match/execute)
+│   ├── skill_loader.py     # Skill loader
+│   ├── skill_models.py     # Skill data models
+│   ├── personality_engine.py  # Personality engine
+│   ├── personality_models.py  # Personality data models
+│   ├── mode_manager.py     # Mode manager (Smart/Plan)
+│   ├── prompts.py          # System prompt generation
+│   ├── prompt_optimizer.py # Prompt optimizer
+│   ├── safety.py           # Security detection & high-risk command blocking
+│   └── token_utils.py      # Token statistics & display
+├── static/                 # Frontend static assets
+│   ├── index.html          # Main page
+│   ├── css/                # Stylesheets
+│   └── js/                 # JavaScript files
+│       ├── app.js          # Main application logic
+│       ├── api.js          # API request wrapper
+│       ├── personality.js  # Persona management UI
+│       ├── skill_manager.js # Skill management modal
+│       └── patch_segmented.js # Reasoning/tool call segmented display
+├── personas/               # Persona definitions (dynamic scan)
+│   ├── Tennine/
+│   ├── Strict Engineer/
+│   ├── Creative Geek/
+│   ├── Miao Xiaotang/
+│   └── Efficient Assistant/
+├── skills/                 # Skill definitions
+│   ├── File Search Master/
+│   ├── Context Manager/
+│   ├── Shell Commander/
+│   ├── Intelligence Analyst/
+│   └── Code Modifier/
+├── skills_custom/          # Custom skills directory
+├── sessions/               # Session data (auto-saved)
+├── config/                 # User configuration (includes API Key)
+├── docs/                   # Development documentation
+└── scripts/                # Launch scripts
 ```
 
 ---
 
-## ⚙️ Configuration
+## 🔧 Custom Skill Development
 
-### Server Configuration
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `GRADIO_PORT` | Web service port | `7860` |
-| `GRADIO_HOST` | Listen address | `127.0.0.1` |
-
-### API Configuration
-
-API Key, Base URL, and model selection are all configured through the **top-right corner** model settings page in the Web UI. They are automatically persisted to `user_config.json` — no manual editing required.
-
-### Command Reference
-
-| Command | Description |
-|---------|-------------|
-| `/smart` | Switch to Smart mode |
-| `/plan` | Switch to Plan mode |
-| `/clear` | Clear chat history |
-| `/compact` | Manually compress context |
-| `/save [name]` | Save current session |
-| `/load <filename>` | Load a historical session |
-| `/status` | View current status |
-| `/tools` | View available tools |
-| `/title <new title>` | Change session title |
-| `/help` | View help |
-
----
-
-## 💡 Usage Examples
-
-### Code Search
+### Skill Directory Structure
 
 ```
-You: Help me find FastAPI route definitions
-→ AI calls grep()
-→ Returns all route definitions with corresponding file line numbers
+skills_custom/MySkill/
+├── skill.json        # Skill metadata + tool definitions (required)
+└── implement.py      # Tool implementation (optional, loaded by default)
 ```
 
-### Git Status
+### skill.json Format
 
-```
-You: Check current repository status
-→ AI calls git_status()
-→ Shows branch, staging area, untracked files
-```
-
-### Line Count
-
-```
-You: Count how many lines of code are in this project
-→ AI calls count_lines()
-→ Displays categorized code line statistics
-```
-
-### Batch Replace
-
-```
-You: Replace all print statements with logging.info
-→ AI calls replace()
-→ Preview first, confirm, then execute
+```json
+{
+  "name": "My Skill",
+  "description": "Skill description",
+  "version": "1.0.0",
+  "guide": "Guide text injected into system prompt",
+  "personalities": ["Tennine", "Strict Engineer"],
+  "tools": [
+    {
+      "name": "my_tool",
+      "description": "Tool description",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "param1": { "type": "string", "description": "Parameter description" }
+        },
+        "required": ["param1"]
+      }
+    }
+  ]
+}
 ```
 
 ---
 
-## 🔒 Security
+## 🔗 API Documentation
 
-- Dangerous commands (`rm -rf`, `format`, `dd if=`, etc.) are automatically blocked
-- API Key is configured through the Web UI and stored only in memory
-- `user_config.json` and `sessions/` directory are added to `.gitignore`
+For detailed API reference, see:
+
+- [API 参考文档（中文）](docs/API_REFERENCE.md)
+- [API Reference (English)](docs/API_REFERENCE.en.md)
 
 ---
 
 ## 📄 License
 
-MIT License
-
----
-
-## 📝 Changelog
-
-### v1.1.0 (May 22, 2026)
-
-#### 🎭 Custom Role System
-- New: personas/ directory dynamic scanning, auto-discover all roles
-- New: Custom roles support soul.md soul definition file
-- New: Built-in roles (Strict Engineer, Creative Geek, Efficient Assistant) exported to personas/ directory
-- New: Default role Tennine (🎀) — owner's personal AI assistant spirit
-- Optimization: Compact horizontal role card layout
-- Fix: Bidirectional role switching, no more deadlocks
-
-#### 🛠️ Skill Management Refactoring
-- New: Skill management modal (click "⚙️ Manage Skills" to open independent window)
-- New: Skill creation form (name + description + Guide)
-- New: Custom skills can be deleted, built-in skills cannot
-- New: Default skills auto-load
-- Optimization: Skill panel streamlined to just title + manage button
-
-#### 🧩 Personality System Improvements
-- Fix: `list_personality_templates()` dynamically scans personas/ directory
-- Fix: `get_personality_template()` correctly filters unknown fields (e.g., learning_priority)
-- Fix: `load_profile()` triple fallback (profile_id → flat file → directory scan)
-- Fix: `apply_personality_template()` checks `apply_template()` return value
-- Fix: Backend lock timeout 1s → 10s, preventing 423 race conditions
-
-#### ⚡ Performance & Code Cleanup
-- Optimization: Frontend `applyRole()` uses template cache, reducing network requests
-- Cleanup: Removed 6 unused functions
-- Cleanup: Deleted backup files, pycache, outdated plan.md
-- Cleanup: Archived old session records
-
-### v1.0.0 (May 19, 2026)
-
-**First official release**
-
-- **Complete Web UI Rewrite**: Migrated from Gradio to **FastAPI + Static Frontend**, supporting 37+ RESTful routes
-- **Streaming SSE Chat**: `/api/chat/stream` endpoint with real-time streaming + interrupt recovery
-- **19 Practical Tools**:
-  - File operations: search, replace, read, write, delete, compare
-  - Git integration: status, commit history, diff, contribution stats
-  - System operations: command execution (with safety checks), directory management, info query
-  - Conda management: environment view, switch, create
-- **Composer Context Compression**: Micro (auto-trim tool info), Auto (compress at 80% Token usage), Manual (`/compact` trigger)
-- **Session Management**: File-level persistence, global registry, grouping/search/rename
-- **Smart / Plan Dual Mode**: Plan mode includes explore → modify → execute → confirm → reset workflow
-- **Token Monitoring**: Real-time input/output/total usage display, cumulative session stats
-- **Status Management**: Status query during streaming (0.3s timeout), auto-recovery after interruption
-- **Theme Support**: Dark/Light theme switching
-- **Prompt Optimization**: Uses LLM to optimize raw user input, UI shows before/after comparison
-- **Model API Wrapper**: Supports independent configuration for multiple models (base_url / api_key), persisted to `user_config.json`
-
----
-
-**Made with 💙**
+This project is open-sourced under the MIT License — see the [LICENSE](LICENSE) file for details.

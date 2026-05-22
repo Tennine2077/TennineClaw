@@ -16,5 +16,12 @@
     "diff"
   ],
   "is_builtin": true,
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "used_by_personas": [
+    "Tennine",
+    "严谨工程师",
+    "创意极客",
+    "喵小糖",
+    "高效助手"
+  ]
 }

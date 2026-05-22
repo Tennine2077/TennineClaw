@@ -689,28 +689,37 @@ def save_global_skill_registry(registry: Dict[str, dict]):
         json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
 
 
-def get_skill_detail(skill_id_or_name: str) -> Optional[str]:
+def get_skill_detail(skill_id_or_name: str) -> dict:
     """
     通过技能 ID 或名称查找技能详情。
-    优先从 skills/ 目录读取 guide.md，回退注册表。
-    返回 detail_content 或 None。
+    返回包含 description 和 guide 的字典。
+    - description: 读取 description.md（用于悬停预览）
+    - guide: 读取 guide.md（完整设定）
     """
-    # 优先从文件读取
+    result = {"description": "", "guide": ""}
     try:
-        import skill_loader
+        from src import skill_loader
+        desc = skill_loader.load_skill_description(skill_id_or_name)
+        if desc:
+            result["description"] = desc
         guide = skill_loader.load_skill_guide(skill_id_or_name)
         if guide:
-            return guide
+            result["guide"] = guide
     except Exception:
         pass
-    registry = load_global_skill_registry()
-    if skill_id_or_name in registry:
-        return registry[skill_id_or_name].get("detail_content", "")
-    for sk_id, sk in registry.items():
-        if sk.get("name") == skill_id_or_name:
-            return sk.get("detail_content", "")
-    return None
-
+    if not result["guide"]:
+        registry = load_global_skill_registry()
+        detail = None
+        if skill_id_or_name in registry:
+            detail = registry[skill_id_or_name].get("detail_content", "")
+        else:
+            for sk_id, sk in registry.items():
+                if sk.get("name") == skill_id_or_name:
+                    detail = sk.get("detail_content", "")
+                    break
+        if detail:
+            result["guide"] = detail
+    return result
 def add_custom_skill(data: dict) -> dict:
     """
     添加自定义技能到全局库。
@@ -757,7 +766,7 @@ def add_custom_skill(data: dict) -> dict:
 
     # 同时保存为文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.save_custom_skill(
             name=entry["name"],
             metadata=entry,
@@ -808,7 +817,7 @@ def update_custom_skill(skill_id: str, data: dict) -> dict:
 
     # 同步更新文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.save_custom_skill(
             name=registry[skill_id]["name"],
             metadata=registry[skill_id],
@@ -836,7 +845,7 @@ def delete_custom_skill(skill_id: str) -> dict:
 
     # 同时删除文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.delete_custom_skill(skill_id)
     except Exception:
         pass
@@ -869,6 +878,7 @@ def get_registry_skills_list(include_detail: bool = False) -> list:
             "tier": sk.get("tier", "basic"),
             "short_description": sk.get("short_description", ""),
             "is_builtin": sk.get("is_builtin", False),
+            "used_by_personas": sk.get("used_by_personas", []),
         }
         if include_detail:
             entry["detail_content"] = sk.get("detail_content", "")
@@ -876,7 +886,7 @@ def get_registry_skills_list(include_detail: bool = False) -> list:
     
     # 2. Scan skills/ and skills_custom/ directories for unregistered skills
     try:
-        from . import skill_loader
+        from src import skill_loader
         scanned = skill_loader.scan_all_skills()
         for sk_id, meta in scanned.items():
             if sk_id not in seen_ids:
@@ -889,6 +899,7 @@ def get_registry_skills_list(include_detail: bool = False) -> list:
                     "tier": meta.get("tier", "basic"),
                     "short_description": meta.get("short_description", ""),
                     "is_builtin": meta.get("is_builtin", False),
+                    "used_by_personas": meta.get("used_by_personas", []),
                 }
                 if include_detail:
                     guide_data = skill_loader.load_skill_guide(sk_id)
@@ -1220,27 +1231,6 @@ def save_global_skill_registry(registry: Dict[str, dict]):
         json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
 
 
-def get_skill_detail(skill_id_or_name: str) -> Optional[str]:
-    """
-    通过技能 ID 或名称查找技能详情。
-    优先从 skills/ 目录读取 guide.md，回退注册表。
-    返回 detail_content 或 None。
-    """
-    # 优先从文件读取
-    try:
-        import skill_loader
-        guide = skill_loader.load_skill_guide(skill_id_or_name)
-        if guide:
-            return guide
-    except Exception:
-        pass
-    registry = load_global_skill_registry()
-    if skill_id_or_name in registry:
-        return registry[skill_id_or_name].get("detail_content", "")
-    for sk_id, sk in registry.items():
-        if sk.get("name") == skill_id_or_name:
-            return sk.get("detail_content", "")
-    return None
 
 def add_custom_skill(data: dict) -> dict:
     """
@@ -1288,7 +1278,7 @@ def add_custom_skill(data: dict) -> dict:
 
     # 同时保存为文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.save_custom_skill(
             name=entry["name"],
             metadata=entry,
@@ -1339,7 +1329,7 @@ def update_custom_skill(skill_id: str, data: dict) -> dict:
 
     # 同步更新文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.save_custom_skill(
             name=registry[skill_id]["name"],
             metadata=registry[skill_id],
@@ -1367,40 +1357,311 @@ def delete_custom_skill(skill_id: str) -> dict:
 
     # 同时删除文件
     try:
-        import skill_loader
+        from src import skill_loader
         skill_loader.delete_custom_skill(skill_id)
     except Exception:
         pass
 
     return {"success": True}
 
-def get_registry_skills_list(include_detail: bool = False) -> list:
+
+# ============================================================
+# used_by_personas 管理函数
+# 以技能为主体管理人格-技能关系（技能端为权威数据源）
+# ============================================================
+
+
+def get_personas_for_skill(skill_id: str) -> list:
+    """获取某个技能的所有使用者（人格名称列表）
+
+    从所有人格配置文件中查找，而非仅依赖注册表。
     """
-    Get all skills from the global registry as a list.
-    Each skill dict includes: id, name, icon, short_description, is_builtin, etc.
+    import os as _os
+    import json as _json
     
-    Args:
-        include_detail: If True, include detail_content (can be large)
-    
-    Returns:
-        List of skill dicts
-    """
-    registry = load_global_skill_registry()
+    project_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), _os.pardir))
+    personas_dir = _os.path.join(project_root, 'personas')
     result = []
-    for sk_id, sk in registry.items():
-        entry = {
-            "id": sk_id,
-            "name": sk.get("name", sk_id),
-            "icon": sk.get("icon", "⚡"),
-            "type": sk.get("type", "active"),
-            "tier": sk.get("tier", "basic"),
-            "short_description": sk.get("short_description", ""),
-            "is_builtin": sk.get("is_builtin", False),
-        }
-        if include_detail:
-            entry["detail_content"] = sk.get("detail_content", "")
-        result.append(entry)
     
-    # Sort by name
-    result.sort(key=lambda x: x.get("name", ""))
+    if not _os.path.isdir(personas_dir):
+        return result
+    
+    for pname in sorted(_os.listdir(personas_dir)):
+        def_file = _os.path.join(personas_dir, pname, 'definition.json')
+        if not _os.path.isfile(def_file):
+            continue
+        try:
+            with open(def_file, 'r', encoding='utf-8') as f:
+                data = _json.load(f)
+            equipped = data.get('equipped_skill_ids', [])
+            if skill_id in equipped:
+                result.append(pname)
+        except Exception:
+            continue
+    
     return result
+
+
+def add_persona_to_skill(skill_id: str, persona_name: str) -> bool:
+    """为技能添加一个使用者（人格）
+
+    同时更新：
+    1. 技能端 skill.json 的 used_by_personas
+    2. 人格端 definition.json 的 equipped_skill_ids（兼容旧代码）
+    3. 全局注册表 global_registry.json
+    """
+    import os as _os
+    import json as _json
+    
+    project_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), _os.pardir))
+    
+    # 1. 更新技能端
+    # 查找技能所在的目录
+    skill_dirs = [
+        _os.path.join(project_root, 'skills'),
+        _os.path.join(project_root, 'skills_custom')
+    ]
+    skill_updated = False
+    for base_dir in skill_dirs:
+        if not _os.path.isdir(base_dir):
+            continue
+        for sname in _os.listdir(base_dir):
+            json_file = _os.path.join(base_dir, sname, 'skill.json')
+            if not _os.path.isfile(json_file):
+                continue
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = _json.load(f)
+                if data.get('id') == skill_id:
+                    users = data.get('used_by_personas', [])
+                    if persona_name not in users:
+                        users.append(persona_name)
+                        data['used_by_personas'] = users
+                        with open(json_file, 'w', encoding='utf-8') as f:
+                            _json.dump(data, f, ensure_ascii=False, indent=2)
+                        skill_updated = True
+                    break
+            except Exception:
+                continue
+    
+    # 2. 更新人格端（兼容旧代码）
+    persona_file = _os.path.join(project_root, 'personas', persona_name, 'definition.json')
+    if _os.path.isfile(persona_file):
+        try:
+            with open(persona_file, 'r', encoding='utf-8') as f:
+                pdata = _json.load(f)
+            equipped = pdata.get('equipped_skill_ids', [])
+            if skill_id not in equipped:
+                equipped.append(skill_id)
+                pdata['equipped_skill_ids'] = equipped
+                with open(persona_file, 'w', encoding='utf-8') as f:
+                    _json.dump(pdata, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+    
+    # 3. 更新全局注册表
+    try:
+        reg = load_global_skill_registry()
+        if skill_id in reg:
+            users = reg[skill_id].get('used_by_personas', [])
+            if persona_name not in users:
+                users.append(persona_name)
+                reg[skill_id]['used_by_personas'] = users
+                save_global_skill_registry(reg)
+    except Exception:
+        pass
+    
+    return skill_updated
+
+
+def remove_persona_from_skill(skill_id: str, persona_name: str) -> bool:
+    """从技能移除一个使用者（人格）
+    
+    同时更新技能端、人格端和全局注册表。
+    """
+    import os as _os
+    import json as _json
+    
+    project_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), _os.pardir))
+    
+    # 1. 更新技能端
+    skill_dirs = [
+        _os.path.join(project_root, 'skills'),
+        _os.path.join(project_root, 'skills_custom')
+    ]
+    skill_updated = False
+    for base_dir in skill_dirs:
+        if not _os.path.isdir(base_dir):
+            continue
+        for sname in _os.listdir(base_dir):
+            json_file = _os.path.join(base_dir, sname, 'skill.json')
+            if not _os.path.isfile(json_file):
+                continue
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = _json.load(f)
+                if data.get('id') == skill_id:
+                    users = data.get('used_by_personas', [])
+                    if persona_name in users:
+                        users.remove(persona_name)
+                        data['used_by_personas'] = users
+                        with open(json_file, 'w', encoding='utf-8') as f:
+                            _json.dump(data, f, ensure_ascii=False, indent=2)
+                        skill_updated = True
+                    break
+            except Exception:
+                continue
+    
+    # 2. 更新人格端
+    persona_file = _os.path.join(project_root, 'personas', persona_name, 'definition.json')
+    if _os.path.isfile(persona_file):
+        try:
+            with open(persona_file, 'r', encoding='utf-8') as f:
+                pdata = _json.load(f)
+            equipped = pdata.get('equipped_skill_ids', [])
+            if skill_id in equipped:
+                equipped.remove(skill_id)
+                pdata['equipped_skill_ids'] = equipped
+                with open(persona_file, 'w', encoding='utf-8') as f:
+                    _json.dump(pdata, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+    
+    # 3. 更新全局注册表
+    try:
+        reg = load_global_skill_registry()
+        if skill_id in reg:
+            users = reg[skill_id].get('used_by_personas', [])
+            if persona_name in users:
+                users.remove(persona_name)
+                reg[skill_id]['used_by_personas'] = users
+                save_global_skill_registry(reg)
+    except Exception:
+        pass
+    
+    return skill_updated
+
+
+def set_skill_personas(skill_id: str, persona_names: list) -> bool:
+    """批量设置技能的使用者列表
+    
+    以提供的列表为准，自动添加新增的、移除缺失的。
+    """
+    current = get_personas_for_skill(skill_id)
+    
+    to_add = [n for n in persona_names if n not in current]
+    to_remove = [n for n in current if n not in persona_names]
+    
+    for name in to_remove:
+        remove_persona_from_skill(skill_id, name)
+    for name in to_add:
+        add_persona_to_skill(skill_id, name)
+    
+    return bool(to_add or to_remove)
+
+
+def sync_all_persona_skills():
+    """以技能端为准，同步所有人格的技能列表
+    
+    遍历所有技能，根据 used_by_personas 重建每个人格的 equipped_skill_ids。
+    当发现不一致时，以技能端为准进行修正。
+    """
+    import os as _os
+    import json as _json
+    
+    project_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), _os.pardir))
+    
+    # 收集所有技能 -> 人格映射
+    skill_persona_map = {}
+    skill_dirs = [
+        _os.path.join(project_root, 'skills'),
+        _os.path.join(project_root, 'skills_custom')
+    ]
+    for base_dir in skill_dirs:
+        if not _os.path.isdir(base_dir):
+            continue
+        for sname in _os.listdir(base_dir):
+            json_file = _os.path.join(base_dir, sname, 'skill.json')
+            if not _os.path.isfile(json_file):
+                continue
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = _json.load(f)
+                sid = data.get('id')
+                users = data.get('used_by_personas', [])
+                if sid:
+                    skill_persona_map[sid] = users
+            except Exception:
+                continue
+    
+    # 反推出每个人格应有的技能列表
+    persona_skills_map = {}
+    for sid, users in skill_persona_map.items():
+        for uname in users:
+            if uname not in persona_skills_map:
+                persona_skills_map[uname] = []
+            persona_skills_map[uname].append(sid)
+    
+    # 修正人格配置文件
+    fixed_count = 0
+    personas_dir = _os.path.join(project_root, 'personas')
+    if _os.path.isdir(personas_dir):
+        for pname in _os.listdir(personas_dir):
+            def_file = _os.path.join(personas_dir, pname, 'definition.json')
+            if not _os.path.isfile(def_file):
+                continue
+            try:
+                with open(def_file, 'r', encoding='utf-8') as f:
+                    pdata = _json.load(f)
+                expected_skills = sorted(persona_skills_map.get(pname, []))
+                current_skills = sorted(pdata.get('equipped_skill_ids', []))
+                if expected_skills != current_skills:
+                    pdata['equipped_skill_ids'] = expected_skills
+                    with open(def_file, 'w', encoding='utf-8') as f:
+                        _json.dump(pdata, f, ensure_ascii=False, indent=2)
+                    fixed_count += 1
+                    print("  [SYNC] %s: %s -> %s" % (pname, current_skills, expected_skills))
+            except Exception:
+                continue
+    
+    return fixed_count
+
+
+# 同步全局注册表中的 used_by_personas
+# 每次加载注册表时，从技能文件中同步
+_original_load = load_global_skill_registry
+
+def _patched_load_global_skill_registry() -> dict:
+    """加载注册表时，自动从技能文件同步 used_by_personas"""
+    reg = _original_load()
+    import os as _os
+    import json as _json
+    
+    project_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), _os.pardir))
+    skill_dirs = [
+        _os.path.join(project_root, 'skills'),
+        _os.path.join(project_root, 'skills_custom')
+    ]
+    
+    for base_dir in skill_dirs:
+        if not _os.path.isdir(base_dir):
+            continue
+        for sname in _os.listdir(base_dir):
+            json_file = _os.path.join(base_dir, sname, 'skill.json')
+            if not _os.path.isfile(json_file):
+                continue
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = _json.load(f)
+                sid = data.get('id')
+                users = data.get('used_by_personas', [])
+                if sid and sid in reg:
+                    reg[sid]['used_by_personas'] = users
+            except Exception:
+                continue
+    
+    return reg
+
+# 替换原函数
+load_global_skill_registry = _patched_load_global_skill_registry
+

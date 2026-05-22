@@ -32,12 +32,13 @@
     "skill_context",
     "skill_edit",
     "skill_info",
-    "skill_search"
+    "skill_search",
+    "skill_pdf"
   ],
   "created_skill_ids": [],
-  "created_at": "2026-05-22T02:19:42.189734",
-  "updated_at": "2026-05-22T02:19:42.189734",
+  "created_at": "2026-05-23T06:11:04.381427",
+  "updated_at": "2026-05-23T06:11:04.381427",
   "version": "1.0.0",
-  "saved_at": "2026-05-22T02:19:42.189734",
+  "saved_at": "2026-05-23T06:11:04.383426",
   "interaction_count": 0
 }

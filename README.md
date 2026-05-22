@@ -2,7 +2,7 @@
 
 > 智能终端助手 · 基于 AI 的代码分析与任务执行平台
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
@@ -16,6 +16,7 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 
 | 日期 | 版本 | 说明 |
 |------|------|------|
+| 2026年5月23日 | **v1.1.1** | 🎨 **UI 全面升级**：重构技能管理界面（独立弹窗、实时开关、增删自定义技能）、角色管理界面优化（角色切换、灵魂定义展示）、思考过程独立折叠展示、工具调用分段展示 |
 | 2026年5月22日 | v1.1.0 | 自定义角色系统（personas/目录动态扫描）、技能管理弹窗（增删/开关）、人格模板动态加载、soul.md 灵魂定义、修复角色切换与技能同步 Bug |
 | 2026年5月19日 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE 流式)、19 个工具、内置 Composer 上下文压缩、会话管理、Smart/Plan 双模式 |
 
@@ -25,7 +26,7 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 
 | 功能 | 说明 |
 |------|------|
-| 🤖 **AI 对话** | 流式响应，支持 DeepSeek 等模型 |
+| 🤖 **AI 对话** | 流式响应，支持 DeepSeek 等模型；思考过程与回复独立分段展示 |
 | 🔍 **Grep 搜索** | 递归搜索文件内容，支持文件过滤 + 上下文显示 |
 | ⚡ **命令执行** | 安全检测的系统命令执行，支持超时控制 |
 | 📁 **文件操作** | 读/写/删除/替换/比较，支持分页查看 |
@@ -34,9 +35,11 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 | 💬 **会话管理** | 自动文件保存，支持分组、搜索、重命名 |
 | 🧩 **上下文压缩** | 自动/手动/微压缩，防止 Token 溢出 |
 | 📊 **Token 监控** | 实时显示输入/输出 Token 数量及占比 |
-| 🎭 **自定义角色** | 支持通过 personas/ 目录动态加载角色，包含完整人格定义（OCEAN五因素、语言风格、行为偏好）+ soul.md 灵魂定义 |
-| 🛠️ **技能管理弹窗** | 技能面板精简为管理按钮，点击弹出独立窗口，支持技能开关、新增（名称+描述+guide）、删除自定义技能 |
+| 🎭 **自定义角色** | 支持通过 personas/ 目录动态加载角色，包含完整人格定义（OCEAN五因素、语言风格、行为偏好）+ soul.md 灵魂定义；角色切换界面优化，灵魂展示更直观 |
+| 🛠️ **技能管理弹窗** | 独立弹窗管理，支持技能实时开关、新增（名称+描述+guide）、删除自定义技能，界面全面重构更易用 |
 | 🧩 **动态模板扫描** | 内置模板已导出到 personas/ 目录，一切角色由目录自动发现，无需硬编码 |
+| 💭 **思考过程展示** | 每个推理步骤独立折叠区块展示，支持全局折叠/展开，状态自动持久化 |
+| 🔧 **工具调用展示** | 每次工具调用独立折叠显示，参数与返回结果分段清晰，支持全局折叠/展开 |
 | 🌓 **主题切换** | 深色/浅色主题 |
 
 ---
@@ -75,256 +78,164 @@ python -m src.web_api
 │ 🧠 TennineClaw               🌓 主题切换    [模型 ▼] [⚙️] │
 ├─────────────────┬──────────────────────────────────┬──────────────────────┤
 │ 左侧面板         │ 中间区域                          │ 右侧面板             │
-│ 💬 新建对话      │                                   │ 🤖 模型信息          │
-│ 📂 历史对话      │  🧠 对话区域                       │ 🧩 Composer 状态     │
-│ ─────────       │                                   │ 📊 Token 用量        │
-│ 📁 会话A        │  🧑 用户信息                       │ 📝 详细参数          │
-│ 📁 会话B        │  🤖 AI 回复...                    │                      │
-│ ─────────       │                                   │                      │
-│ 📁 会话C        │                                   │                      │
-│ 📁 ...          │                                   │                      │
+│ 💬 新建对话      │                                   │ 🤖 模型信息          
+│ 📋 会话列表      │   🤖 AI 对话区域                   │ 🧩 已加载技能列表    
+│ 🔍 搜索会话      │   ┌──────────────────────┐       │ 🎭 当前角色          
+│                  │   │ 💭 推理过程（可折叠）│       │ 📊 Token 统计        
+│                  │   ├──────────────────────┤       │                      │
+│                  │   │ 🔧 工具调用（可折叠）│       │                      │
+│                  │   ├──────────────────────┤       │                      │
+│                  │   │ 💬 AI 回复           │       │                      │
+│                  │   └──────────────────────┘       │                      │
+│                  │                                   │                      │
+│                  │   [📝 输入消息...] [发送]         │                      │
 ├─────────────────┴──────────────────────────────────┴──────────────────────┤
+│ 🔌 快捷键: Ctrl+Enter 发送 · Ctrl+Shift+Enter 换行 · ↑↓ 切换历史         │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ 工具清单
+## 🧩 技能系统
 
-### 文件搜索
+技能系统是 TennineClaw 的核心扩展机制，支持技能的自由组合与动态加载。
 
-| 命令 | 功能 | 示例 |
-|------|------|------|
-| `grep` | 递归搜索文件内容 | `grep("def __init__", glob="*.py", context=2)` |
-| `replace` | 批量替换，默认预检 | `replace("old", "new", dry_run=True)` |
-| `find_files` | 按扩展名搜索文件 | `find_files("*.py", sort_by="size")` |
-| `count_lines` | 统计代码行数 | `count_lines(pattern="*.py,*.js")` |
-| `diff` | 文件内容对比 | `diff("a.py", "b.py")` |
-| `show_file` | 带行号查看文件 | `show_file("main.py", start=50, count=30)` |
+### 内置技能
 
-### Git
+| 技能名称 | 说明 |
+|---------|------|
+| 🔍 **文件搜索大师** | 精通文件搜索与内容检索，快速定位目标文件 |
+| 🧠 **上下文管理师** | 精通上下文管理与压缩，保持对话高效 |
+| 💻 **Shell 指挥官** | 精通系统命令执行，高效完成各类命令行操作 |
+| 📊 **情报分析师** | 精通系统信息采集与分析，快速获取关键情报 |
+| 📝 **代码魔改师** | 精通文件读写与代码修改，高效编辑代码文件 |
 
-| 命令 | 功能 |
-|------|------|
-| `git_status` | 查看仓库状态，含分支、远程、ahead/behind |
-| `git_log` | 查看提交历史，支持分支/作者过滤 |
-| `git_diff` | 查看未暂存的变更 |
-| `git_commit_stats` | 统计文件变更和提交数 |
+### 自定义技能
 
-### 系统
-
-| 命令 | 功能 |
-|------|------|
-| `run_cmd` | 执行系统命令（含安全检测） |
-| `read_file` / `write_file` | 文件读写 |
-| `list_files` / `create_directory` | 目录管理 |
-| `get_system_info` | 系统信息查询 |
-| `get_current_time` | 当前时间 |
+支持在 `skills_custom/` 目录下通过 `skill.json` 定义自定义技能，系统自动发现并加载。
 
 ---
 
-## 🏗️ 架构
+## 🎭 角色系统（Persona）
 
-```
-┌──────────────────────────────────────────────────────────┐
-│         Web UI (FastAPI + Static Files)                  │
-│   static/index.html + style.css + app.js                │
-├──────────────────────────────────────────────────────────┤
-│           web_api.py (API 路由层)                        │
-├──────────────────────────────────────────────────────────┤
-│      main.py / main_stream.py (对话处理)                 │
-├──────────────────────────────────────────────────────────┤
-│   tools/                                                 │
-│   ├── __init__.py    工具注册                            │
-│   ├── cmd_exec.py    系统命令执行                         │
-│   ├── file_ops.py    文件读写                            │
-│   ├── dir_ops.py     目录操作                            │
-│   ├── info_ops.py    系统信息                            │
-│   ├── search_ops.py  Grep / 替换 / 统计                  │
-│   └── git_ops.py     Git 操作                            │
-├──────────────────────────────────────────────────────────┤
-│   支持层                                                 │
-│   ├── context.py         上下文管理与压缩                 │
-│   ├── session_manager.py 会话保存/加载/注册              │
-│   ├── safety.py          命令安全检测                     │
-│   ├── prompts.py         系统提示词模板                   │
-│   ├── prompt_optimizer.py 提示词优化                     │
-│   ├── token_utils.py     Token 用量工具                  │
-│   └── mode_manager.py    模式管理                        │
-└──────────────────────────────────────────────────────────┘
-```
+角色系统为 AI 助手赋予人格化特征，包含性格、语言风格和行为偏好。
 
-## 📁 项目结构
+### 内置角色
+
+| 角色 | 特点 |
+|------|------|
+| 🧑‍💻 **Tennine** | 默认角色，古灵精怪的 AI 助手精灵，靠谱又调皮 |
+| 🧑‍🔧 **严谨工程师** | 专业、精确、注重规范的编程助手 |
+| 🎨 **创意极客** | 天马行空、创新导向的技术伙伴 |
+| 😺 **喵小糖** | 可爱系的 AI 助手，萌系沟通风格 |
+| ⚡ **高效助手** | 简洁直接、注重效率的任务执行者 |
+
+### 创建自定义角色
+
+1. 在 `personas/` 目录下创建新文件夹（如 `personas/我的角色/`）
+2. 在该文件夹中创建 `personality.json` 定义人格参数
+3. （可选）创建 `soul.md` 编写角色的灵魂定义与核心设定
+4. 刷新页面，角色自动出现在角色列表中
+
+---
+
+## 💻 技术架构
 
 ```
 TennineClaw/
-├── __init__.py              # 包初始化 + 版本号
-├── config.py                # 配置管理（持久化 + 默认值）
-├── main.py                  # 核心对话逻辑
-├── main_stream.py           # 流式对话逻辑
-├── web_api.py               # FastAPI Web 接口（37 条路由）
-│
-├── session_manager.py       # 会话持久化 + 全局会话注册
-├── context.py               # 上下文压缩（Micro/Auto/Manual）
-├── mode_manager.py          # Smart / Plan 模式管理
-├── prompt_optimizer.py      # 用户输入提示词优化
-├── prompts.py               # 系统提示词模板
-├── safety.py                # 系统命令安全检测
-├── token_utils.py           # Token 用量与格式化
-│
-├── requirements.txt         # Python 依赖
-├── run.bat / run.ps1        # Windows 启动脚本
-│
-├── tools/                   # Function Calling 工具集
-│   ├── __init__.py          # 工具注册装饰器
-│   ├── cmd_exec.py          # 系统命令执行
-│   ├── file_ops.py          # 文件读写
-│   ├── dir_ops.py           # 目录操作
-│   ├── info_ops.py          # 系统信息查询
-│   ├── search_ops.py        # Grep / 替换 / 行数统计
-│   └── git_ops.py           # Git 状态 / 日志 / 对比
-│
-└── static/                  # 前端静态资源
-    ├── index.html           # 主页面
-    ├── js/api.js            # API 调用封装
-    ├── js/app.js            # 前端交互逻辑
-    └── css/style.css        # 样式（深色/浅色主题）
+├── src/                    # 核心后端代码
+│   ├── main.py             # Agent 会话主逻辑
+│   ├── main_stream.py      # 流式对话处理模块（SSE 推送）
+│   ├── web_api.py          # FastAPI Web API 服务
+│   ├── config.py           # 全局配置管理
+│   ├── context.py          # 三重上下文管理器（Composer）
+│   ├── session_manager.py  # 会话管理（保存/加载/列表）
+│   ├── skill_engine.py     # 技能引擎（加载/匹配/执行）
+│   ├── skill_loader.py     # 技能加载器
+│   ├── skill_models.py     # 技能数据模型
+│   ├── personality_engine.py  # 人格引擎
+│   ├── personality_models.py  # 人格数据模型
+│   ├── mode_manager.py     # 模式管理器（Smart/Plan）
+│   ├── prompts.py          # 系统提示词生成
+│   ├── prompt_optimizer.py # Prompt 智能优化器
+│   ├── safety.py           # 安全检测与高危命令拦截
+│   └── token_utils.py      # Token 统计与展示
+├── static/                 # 前端静态资源
+│   ├── index.html          # 主页面
+│   ├── css/                # 样式文件
+│   └── js/                 # JavaScript 文件
+│       ├── app.js          # 主应用逻辑
+│       ├── api.js          # API 请求封装
+│       ├── personality.js  # 角色管理 UI
+│       ├── skill_manager.js # 技能管理弹窗
+│       └── patch_segmented.js # 思考/工具调用分段展示
+├── personas/               # 角色定义目录（动态扫描）
+│   ├── Tennine/
+│   ├── 严谨工程师/
+│   ├── 创意极客/
+│   ├── 喵小糖/
+│   └── 高效助手/
+├── skills/                 # 技能定义目录
+│   ├── 文件搜索大师/
+│   ├── 上下文管理师/
+│   ├── Shell 指挥官/
+│   ├── 情报分析师/
+│   └── 代码魔改师/
+├── skills_custom/          # 自定义技能目录
+├── sessions/               # 会话数据（自动保存）
+├── config/                 # 用户配置（含 API Key）
+├── docs/                   # 开发文档
+└── scripts/                # 启动脚本
 ```
 
 ---
 
-## ⚙️ 配置
+## 🔧 自定义技能开发
 
-### 服务器配置
-
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `GRADIO_PORT` | Web 服务端口 | `7860` |
-| `GRADIO_HOST` | 监听地址 | `127.0.0.1` |
-
-### API 配置
-
-API Key、Base URL、模型选择均通过 **Web UI 右上角** 模型设置页面配置，自动持久化到 `user_config.json`，无需手动编辑。
-
-### 指令参考
-
-| 指令 | 说明 |
-|------|------|
-| `/smart` | 切换到 Smart 模式 |
-| `/plan` | 切换到 Plan 模式 |
-| `/clear` | 清除对话历史 |
-| `/compact` | 手动压缩上下文 |
-| `/save [名称]` | 保存当前会话 |
-| `/load <文件名>` | 加载历史会话 |
-| `/status` | 查看当前状态 |
-| `/tools` | 查看可用工具 |
-| `/title <新标题>` | 修改会话标题 |
-| `/help` | 查看帮助 |
-
----
-
-## 💡 使用示例
-
-### 代码搜索
+### 技能目录结构
 
 ```
-你：帮我找到 FastAPI 路由定义
-→ AI 调用 grep()
-→ 返回所有路由定义及对应文件行号
+skills_custom/我的技能/
+├── skill.json        # 技能元数据 + 工具定义（必需）
+└── implement.py      # 工具实现（可选，默认加载）
 ```
 
-### Git 状态
+### skill.json 格式
 
-```
-你：查看当前仓库状态
-→ AI 调用 git_status()
-→ 显示分支、暂存区、未跟踪文件
-```
-
-### 行数统计
-
-```
-你：统计一下这个项目中有多少行代码
-→ AI 调用 count_lines()
-→ 分类型显示代码行数统计
-```
-
-### 批量替换
-
-```
-你：把 print 全部改成 logging.info
-→ AI 调用 replace()
-→ 先预览后确认再执行
+```json
+{
+  "name": "我的技能",
+  "description": "技能描述",
+  "version": "1.0.0",
+  "guide": "使用指南文本，会注入到 system prompt 中",
+  "personalities": ["Tennine", "严谨工程师"],
+  "tools": [
+    {
+      "name": "my_tool",
+      "description": "工具描述",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "param1": { "type": "string", "description": "参数说明" }
+        },
+        "required": ["param1"]
+      }
+    }
+  ]
+}
 ```
 
 ---
 
-## 🔒 安全
+## 🔗 API 文档
 
-- 危险命令（`rm -rf`、`format`、`dd if=` 等）自动拦截
-- API Key 通过 Web UI 设置，仅存储在内存中
-- `user_config.json` 和 `sessions/` 目录已加入 `.gitignore`
+详细的 API 参考文档请参见：
+
+- [API 参考文档（中文）](docs/API_REFERENCE.md)
+- [API Reference (English)](docs/API_REFERENCE.en.md)
 
 ---
 
 ## 📄 许可
 
-MIT License
-
----
-
-## 📝 更新日志
-
-### v1.1.0（2026年5月22日）
-
-#### 🎭 自定义角色系统
-- 新增：personas/ 目录动态扫描，自动发现所有角色
-- 新增：自定义角色支持 soul.md 灵魂定义文件
-- 新增：内置角色（严谨工程师、创意极客、高效助手）导出到 personas/ 目录
-- 新增：默认角色 Tennine（🎀）— 主人的专属 AI 助手精灵
-- 优化：角色卡片紧凑水平布局，节省空间
-- 修复：角色切换双向可逆，不再卡死
-
-#### 🛠️ 技能管理重构
-- 新增：技能管理弹窗（点击「⚙️ 管理技能」弹出独立窗口）
-- 新增：技能新增表单（技能名称 + 描述 + Guide）
-- 新增：自定义技能可删除，内置技能不可删除
-- 新增：默认技能自动加载
-- 优化：技能面板精简为仅 Title + 管理按钮
-
-#### 🧩 人格系统改进
-- 修复：`list_personality_templates()` 动态扫描 personas/ 目录
-- 修复：`get_personality_template()` 正确过滤未知字段（如 learning_priority）
-- 修复：`load_profile()` 三次回退查找（profile_id → 扁平文件 → 目录扫描）
-- 修复：`apply_personality_template()` 检查 `apply_template()` 返回值
-- 修复：后端锁超时从 1s → 10s，避免 423 竞争冲突
-
-#### ⚡ 性能与代码清理
-- 优化：前端 `applyRole()` 使用模板缓存，减少网络请求
-- 清理：移除 6 个未使用的函数
-- 清理：删除备份文件、pycache、过期 plan.md
-- 清理：归档旧会话记录
-
-### v1.0.0（2026年5月19日）
-
-**首个正式版本发布**
-
-- **Web UI 全量重构**：从 Gradio 迁移至 **FastAPI + 静态前端**，支持 37+ RESTful 路由
-- **流式 SSE 对话**：`/api/chat/stream` 端点，支持实时流式传输 + 中断恢复
-- **19 个实用工具**：
-  - 文件操作：搜索、替换、读取、写入、删除、对比
-  - Git 集成：状态查看、提交历史、差异对比、提交统计
-  - 系统操作：命令执行（安全检测）、目录管理、信息查询
-  - Conda 管理：环境查看、切换、创建
-- **Composer 上下文压缩**：Micro（自动裁剪工具信息）、Auto（Token 达 80% 自动压缩）、Manual（`/compact` 手动触发）
-- **会话管理系统**：文件级持久化、全局注册表、分组/搜索/重命名
-- **Smart / Plan 双模式**：Plan 模式包含 explore → modify → execute → confirm → reset 工作流
-- **Token 监控系统**：实时显示输入/输出/总计用量，会话累计统计
-- **状态管理**：流式请求期间状态查询（0.3s 超时）、中断后自动恢复
-- **主题支持**：深色/浅色主题切换
-- **提示词优化**：使用 LLM 优化用户原始输入，UI 展示优化前后对比
-- **模型 API 封装**：支持多模型独立配置（base_url / api_key），持久化到 `user_config.json`
-
----
-
-**Made with 💙**
+本项目基于 MIT 许可证开源 — 详见 [LICENSE](LICENSE) 文件。

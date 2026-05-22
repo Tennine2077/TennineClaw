@@ -380,11 +380,19 @@ async def chat_stream(req: ChatRequest):
                 if chunk.startswith('__OPT__'):
                     opt_content = chunk[7:]  # 去掉 __OPT__ 前缀
                     yield f"data: {json.dumps({'type': 'optimized_prompt', 'content': opt_content})}\n\n"
+                elif chunk.startswith('__TOOL_CALL__'):
+                    tool_content = chunk[13:]  # 去掉 __TOOL_CALL__ 前缀
+                    yield f"data: {json.dumps({'type': 'tool_call', 'content': tool_content})}\n\n"
+                elif chunk.startswith('__FINAL__'):
+                    yield f"data: {json.dumps({'type': 'final', 'content': ''})}\n\n"
                 elif chunk == "\n\n⏹️ **已中断**":
                     was_interrupted = True
                     yield f"data: {json.dumps({'type': 'interrupted', 'content': chunk})}\n\n"
                 elif chunk.startswith('🔧'):
                     yield f"data: {json.dumps({'type': 'tool_call', 'content': chunk})}\n\n"
+                elif chunk.startswith('__REASONING__'):
+                    reasoning_content = chunk[13:]  # 去掉前缀（__REASONING__ 共13字符）
+                    yield f"data: {json.dumps({'type': 'reasoning', 'content': reasoning_content})}\n\n"
                 else:
                     session._partial_stream_content += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
@@ -741,15 +749,60 @@ async def get_session_messages(session_id: str = ""):
         original_inputs = getattr(session, 'original_user_inputs', {})
         optimized_map = getattr(session, 'optimized_prompts', {})
         display_msgs = []
+
+        # 逐条构建 rounds：每个 assistant 消息携带自己的 rounds 数据
+        # pending 结构: {thinking, tool_calls:[{name,arguments,tool_call_id,result}]}
+        pending = None  # 当前 round（最后一次 assistant 工具调用后创建）
+
         for idx, m in enumerate(msgs):
             role = m.get("role", "")
             if role == "system":
                 continue
+
             if role == "assistant":
                 content = m.get("content", "")
-                if not content and "tool_calls" in m:
-                    content = "[工具调用]"
-                display_msgs.append({"role": "assistant", "content": content})
+                tool_calls_raw = m.get("tool_calls", None)
+                reasoning = m.get("reasoning_content", "")
+
+                msg_item = {"role": "assistant", "content": content or "[工具调用]"}
+                if reasoning:
+                    msg_item["reasoning_content"] = reasoning
+
+                if tool_calls_raw:
+                    # 工具调用：创建一个新 round，挂载到本 msg_item
+                    # 本 round 的 response 留空（后续的最终回复消息会创建独立的新 round，
+                    # 不通过对象引用修改此 round）
+                    tc_list = []
+                    tool_list = []
+                    for tc in tool_calls_raw:
+                        tc_info = {
+                            "name": tc.get("function", {}).get("name", ""),
+                            "arguments": tc.get("function", {}).get("arguments", ""),
+                            "tool_call_id": tc.get("id", ""),
+                        }
+                        tc_list.append(tc_info)
+                        tool_list.append({**tc_info, "result": ""})
+                    msg_item["tool_calls"] = tc_list
+                    pending = {
+                        "thinking": reasoning or "",
+                        "tool_calls": tool_list,
+                        "response": ""
+                    }
+                    # 当前 round 挂载到本 assistant 消息
+                    msg_item["rounds"] = [pending]
+                else:
+                    # 最终回复：创建独立的新 round，不修改之前的 pending 对象
+                    # （前台知悉每个 assistant 消息独立渲染，工具调用消息不含回复内容）
+                    current_round = {
+                        "thinking": reasoning or "",
+                        "tool_calls": [],
+                        "response": content
+                    }
+                    if reasoning or content:
+                        msg_item["rounds"] = [current_round]
+                    pending = None
+                display_msgs.append(msg_item)
+
             elif role == "user":
                 content = m.get("content", "")
                 optimized_text = None
@@ -763,8 +816,24 @@ async def get_session_messages(session_id: str = ""):
                 if optimized_text:
                     msg_item["optimized_prompt"] = optimized_text
                 display_msgs.append(msg_item)
+                # 新用户消息 => 重置 pending 和 assistant_rounds
+                pending = None
+                assistant_rounds = None
+
             elif role == "tool":
-                display_msgs.append({"role": "tool", "content": m.get("content", "")[:200]})
+                tool_call_id = m.get("tool_call_id", "")
+                result = m.get("content", "")[:10000]
+                if pending:
+                    for rt in pending["tool_calls"]:
+                        if rt.get("tool_call_id") == tool_call_id:
+                            rt["result"] = result
+                            break
+                display_msgs.append({
+                    "role": "tool",
+                    "content": result,
+                    "tool_call_id": tool_call_id
+                })
+
         title = getattr(session, 'session_title', '')
         partial = getattr(session, '_partial_stream_content', '') or ''
     finally:
@@ -1330,6 +1399,10 @@ async def apply_personality_template(data: dict, session_id: str = None):
         if equipped_ids:
             pe.profile.equipped_skill_ids = list(equipped_ids)
         pe.save_profile()
+        # 同步更新技能注册表的 used_by_personas
+        from .skill_models import add_persona_to_skill
+        for sid in equipped_ids:
+            add_persona_to_skill(sid, template_name)
         return SkillPersonalityResponse(
             success=True,
             message=f"已应用人格模板: {template_name}",
@@ -1568,70 +1641,16 @@ async def get_skill_registry(include_detail: bool = False, session_id: str = Non
 
 @app.get("/api/skills/registry/{skill_id}/detail")
 async def get_skill_detail(skill_id: str, session_id: str = None):
-    """获取单个技能的详细内容"""
+    """获取单个技能的详细内容（含description和guide）"""
     try:
         from .skill_models import get_skill_detail
         detail = get_skill_detail(skill_id)
-        if detail is None:
-            raise HTTPException(status_code=404, detail=f"技能 {skill_id} 不存在")
-        return {"success": True, "detail": detail}
-    except HTTPException:
-        raise
+        if detail.get("description") or detail.get("guide"):
+            return {"success": True, "description": detail.get("description", ""), "guide": detail.get("guide", "")}
+        return {"success": False, "description": "", "guide": ""}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/api/skills/registry")
-async def create_skill(data: dict, session_id: str = None):
-    """创建自定义技能"""
-    try:
-        from .skill_models import add_custom_skill
-        # 记录创建者
-        if session_id:
-            data["created_by"] = session_id
-        result = add_custom_skill(data)
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-        return {"success": True, "data": result}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.put("/api/skills/registry/{skill_id}")
-async def update_skill(skill_id: str, data: dict, session_id: str = None):
-    """更新自定义技能"""
-    try:
-        from .skill_models import update_custom_skill
-        result = update_custom_skill(skill_id, data)
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/api/skills/registry/{skill_id}")
-async def delete_skill(skill_id: str, session_id: str = None):
-    """删除自定义技能"""
-    try:
-        from .skill_models import delete_custom_skill
-        result = delete_custom_skill(skill_id)
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============================================================
-# 人格-技能绑定 API（新增）
-# ============================================================
 
 @app.get("/api/personality/equipped-skills")
 async def get_equipped_skills(session_id: str = None):
