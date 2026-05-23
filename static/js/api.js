@@ -99,8 +99,8 @@ const API = {
     /**
      * 保存会话
      */
-    async saveSession(title = '') {
-        return this._request('POST', '/api/session/save', { title });
+    async saveSession(title = '', sessionId = '') {
+        return this._request('POST', '/api/session/save', { title, session_id: sessionId });
     },
 
     /**
@@ -315,6 +315,14 @@ const API = {
     /** 从注册表删除会话 */
     async deleteRegisteredSession(sessionId) {
         return this._request('DELETE', `/api/session/${encodeURIComponent(sessionId)}`);
+    },
+
+    /** 创建分支会话（从指定消息创建新会话） */
+    async createBranch(sessionId, messageIndex) {
+        return this._request('POST', '/api/session/branch', {
+            session_id: sessionId,
+            message_index: messageIndex
+        });
     },
 
     // ============================================================

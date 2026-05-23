@@ -25,103 +25,7 @@ from .prompt_optimizer import optimize_prompt, format_optimized_prompt
 # 工具函数 — 文本分段与推理摘要
 # ============================================================
 
-def _split_into_paragraphs(text: str, min_chars: int = 80) -> list:
-    """将文本按自然段落/句子分割成块，用于逐段输出
-    
-    分割策略（优先级从高到低）：
-    1. 双换行符 \n\n → 段落分割
-    2. 单换行符 \n → 行分割
-    3. 句号/问号/感叹号 → 句子分割
-    4. 逗号/分号 → 子句分割（仅在块过长时）
-    
-    Args:
-        text: 要分割的文本
-        min_chars: 每个块的最小字符数（低于此值会合并）
-    
-    Returns:
-        分割后的文本块列表
-    """
-    if not text or not text.strip():
-        return []
-    
-    text = text.strip()
-    
-    # 如果文本很短，直接返回
-    if len(text) <= min_chars * 1.5:
-        return [text]
-    
-    chunks = []
-    
-    # 策略1：按双换行分段落
-    paragraphs = re.split(r'\n\s*\n', text)
-    
-    # 如果只有一个段落，尝试更细粒度的分割
-    if len(paragraphs) <= 1:
-        # 策略2：按单换行分割
-        lines = text.split('\n')
-        if len(lines) > 1:
-            current = ""
-            for line in lines:
-                if not line.strip():
-                    if current.strip():
-                        chunks.append(current.strip())
-                        current = ""
-                    continue
-                if not current:
-                    current = line
-                elif len(current) + len(line) < min_chars * 2:
-                    current += '\n' + line
-                else:
-                    chunks.append(current.strip())
-                    current = line
-            if current.strip():
-                chunks.append(current.strip())
-            
-            if len(chunks) > 1:
-                return chunks
-        
-        # 策略3：按句子分割
-        sentences = re.split(r'(?<=[。！？.!?])\s*', text)
-        sentences = [s.strip() for s in sentences if s.strip()]
-        
-        if len(sentences) > 1:
-            current = ""
-            for sent in sentences:
-                if not current:
-                    current = sent
-                elif len(current) + len(sent) < min_chars:
-                    current += sent
-                else:
-                    chunks.append(current.strip())
-                    current = sent
-            if current.strip():
-                chunks.append(current.strip())
-            return chunks if chunks else [text]
-        
-        return [text]
-    
-    # 有多个段落，逐段落处理
-    current = ""
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
-            if current:
-                chunks.append(current.strip())
-                current = ""
-            continue
-        
-        if not current:
-            current = para
-        elif len(current) + len(para) < min_chars * 3:
-            current += '\n\n' + para
-        else:
-            chunks.append(current.strip())
-            current = para
-    
-    if current.strip():
-        chunks.append(current.strip())
-    
-    return chunks if chunks else [text]
+
 
 
 def _get_reasoning_summary(reasoning_text: str, max_chars: int = -1) -> str:
@@ -284,7 +188,7 @@ class AgentSessionStreamMixin:
         # 确保即使生成器被外部 close()（客户端断连）也能 auto_save
         try:
             # ---- Prompt 智能优化 ----
-            optimized_prompt = optimize_prompt(user_input, self.client)
+            optimized_prompt = optimize_prompt(user_input, self.client, context_msgs=self.msgs)
             if optimized_prompt != user_input and optimized_prompt:
                 # 使用优化后的 prompt 作为会话标题（更准确）
                 self._auto_set_title(optimized_prompt)

@@ -80,6 +80,10 @@ def save_session(session, path: str = None, save_dir: str = None) -> str:
         "original_user_inputs": getattr(session, "original_user_inputs", {}),
         "optimized_prompts": getattr(session, "optimized_prompts", {}),
         "message_count": len(getattr(session, '_display_msgs', session.msgs)),
+        # 分支会话元数据（from branch feature）
+        "parent_session_id": getattr(session, "parent_session_id", ""),
+        "trigger_message_index": getattr(session, "trigger_message_index", -1),
+        "trigger_message_preview": getattr(session, "trigger_message_preview", ""),
     }
     
     # 确定保存路径
@@ -140,6 +144,11 @@ def restore_session(session, path: str) -> str:
         session.last_token_stats = f"输入: {session.current_tokens:,}"
     
     session.session_title = data.get("session_title", "")
+    
+    # 恢复分支会话元数据
+    session.parent_session_id = data.get("parent_session_id", "")
+    session.trigger_message_index = data.get("trigger_message_index", -1)
+    session.trigger_message_preview = data.get("trigger_message_preview", "")
     session._title_set = bool(session.session_title)  # 有标题就标记已设定，避免加载后重新生成
     
     # 恢复 Composer 统计
@@ -204,6 +213,9 @@ def list_sessions(save_dir: str = None) -> List[Dict[str, Any]]:
                 "mode": data.get("mode_name", "未知"),
                 "messages": data.get("message_count", 0),
                 "version": data.get("version", "未知"),
+                "parent_session_id": data.get("parent_session_id", ""),
+                "trigger_message_index": data.get("trigger_message_index", -1),
+                "trigger_message_preview": data.get("trigger_message_preview", ""),
             })
         except (json.JSONDecodeError, IOError):
             continue
@@ -238,18 +250,27 @@ def auto_save(session, session_save_path: str = None, save_dir: str = None) -> s
     
     session_dir = ensure_session_dir(save_dir or SESSION_SAVE_DIR)
     
+    # [DEBUG] 追踪 auto_save
+    sid = getattr(session, 'session_id', 'unknown')[:12]
+    print(f"[DEBUG_AUTO] auto_save called: session={sid} session_save_path={session_save_path}", flush=True)
+    
     # 已有保存路径：直接覆盖更新
     if session_save_path:
         try:
             save_session(session, path=session_save_path)
+            print(f"[DEBUG_AUTO] SAVED TO EXISTING PATH: {session_save_path}", flush=True)
             return session_save_path
         except Exception as e:
+            print(f"[DEBUG_AUTO] FAILED write to {session_save_path}: {e}", flush=True)
             return ""
+    
+    # 首次保存：用标题+时间戳生成文件名
+    print(f"[DEBUG_AUTO] NO PATH - generating new filename", flush=True)
     
     # 首次保存：用标题+时间戳生成文件名
     title = getattr(session, "session_title", "") or "新会话"
     # 只保留安全的文件名字符（中英文、数字、空格、短横、下划线）
-    safe_title = re.sub(r'[\\/:*?"<>|]', '', title).strip()
+    safe_title = re.sub(r'[\\/:*?"<>|\n\r\t]', '', title).strip()
     if not safe_title:
         safe_title = "新会话"
     safe_title = safe_title[:60]  # 限制长度
@@ -281,15 +302,6 @@ def get_session_display_list(save_dir: str = None) -> str:
         )
     
     return "\n".join(lines)
-
-
-def get_session_title_from_path(path: str) -> str:
-    """从会话文件路径读取标题"""
-    try:
-        data = load_session(path)
-        return data.get("session_title", "（无标题）")
-    except:
-        return "（无法读取）"
 
 
 # ============================================================
@@ -345,19 +357,6 @@ class SessionRegistry:
     def get_active(self) -> Optional[str]:
         """获取当前活动会话 ID"""
         return self._active_id
-
-    def load_from_path(self, filepath: str) -> Optional[str]:
-        """从文件加载会话到注册表，返回 session_id"""
-        from .main import AgentSession
-        from .config import SESSION_SAVE_DIR
-        data = load_session(filepath)
-        sid = str(uuid.uuid4())
-        session = AgentSession(session_id=sid)
-        restore_session(session, filepath)
-        self._sessions[sid] = session
-        self._locks[sid] = threading.Lock()
-        return sid
-
     def all_sessions(self) -> Dict[str, Any]:
         """获取所有会话"""
         return dict(self._sessions)

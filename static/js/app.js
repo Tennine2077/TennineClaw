@@ -476,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentActivePath: null, // 当前高亮的会话路径
         activeSessionId: 'default',  // 初始为默认会话，切换后更新
         sessionInputs: {},      // 保存每个 session 的输入框文字 { sessionId: text }
+        _msgCounter: 0,         // 消息索引计数器（用于分支会话）
     };
 
     // ============================================================
@@ -532,7 +533,113 @@ document.addEventListener('DOMContentLoaded', () => {
         return temp.innerHTML;
     }
 
-    function addMessage(content, role) {
+
+
+// ============================================================
+// 分支会话功能
+// ============================================================
+
+/**
+ * 在 AI 消息上添加分支按钮
+ */
+function addBranchButton(msgDiv, messageIndex) {
+    // 避免重复添加
+    if (msgDiv.querySelector('.branch-btn')) return;
+    
+    const btn = document.createElement('button');
+    btn.className = 'branch-btn';
+    btn.title = '从此处创建分支会话';
+    btn.innerHTML = '🌿';
+    btn.dataset.messageIndex = messageIndex;
+    
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        handleBranchClick(parseInt(this.dataset.messageIndex));
+    });
+    
+    msgDiv.appendChild(btn);
+    msgDiv.classList.add('has-branch-btn');
+}
+
+/**
+ * 处理分支会话创建
+ */
+async function handleBranchClick(messageIndex) {
+    if (messageIndex === undefined || messageIndex < 0) {
+        showToast('无效的消息索引', 'error');
+        return;
+    }
+    
+    const sessionId = state.activeSessionId;
+    if (!sessionId) {
+        showToast('未找到当前会话', 'error');
+        return;
+    }
+    
+    // 如果是 default 会话且没有保存路径，先保存
+    try {
+        await API.saveSession();
+    } catch (e) {
+        // ignore
+    }
+    
+    try {
+        showToast('正在创建分支会话...', 'info');
+        
+        const data = await API.createBranch(sessionId, messageIndex);
+        
+        if (data.status === 'success') {
+            showToast('✅ 分支会话已创建，正在跳转...', 'success');
+            
+            // 保存当前会话输入
+            _switchSaveInput();
+            
+            // 停止流式
+            if (state.isStreaming) {
+                state.isStreaming = false;
+                el.interruptBtn.style.display = 'none';
+                el.sendBtn.style.display = 'flex';
+                el.sendBtn.disabled = false;
+            }
+            
+            // 切换到新会话 - 最简方案：直接切换 + 显式保存
+            state.activeSessionId = data.session_id;
+            state._msgCounter = 0;
+            state.currentActivePath = data.save_path || null;
+            
+            // 清除当前消息
+            el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
+            el.messagesContainer.querySelectorAll('.optimized-prompt').forEach(opt => opt.remove());
+            
+            // 从后端获取会话消息
+            const msgData = await API.getSessionMessages(state.activeSessionId);
+            const messages = msgData.messages || [];
+            await renderMessages(messages);
+            
+            // 恢复输入
+            el.chatInput.value = state.sessionInputs[state.activeSessionId] || '';
+            
+            // 强制保存到磁盘（明确指定 session_id，确保保存到正确文件）
+            try {
+                const saveResult = await API.saveSession('', state.activeSessionId);
+                console.log('[分支] 保存结果:', saveResult, 'session:', state.activeSessionId);
+            } catch (e) {
+                console.warn('[分支] 保存失败:', e);
+            }
+            
+            // 直接刷新会话列表（强制刷新，不检查 isStreaming）
+            await renderSessionList(true);
+            
+            showToast('🌿 已切换到分支会话', 'success');
+        } else {
+            showToast('创建分支会话失败: ' + (data.detail || '未知错误'), 'error');
+        }
+    } catch (e) {
+        showToast('创建分支会话失败: ' + e.message, 'error');
+    }
+}
+
+    function addMessage(content, role, messageIndex) {
         if (el.welcomeMessage && !el.welcomeMessage.classList.contains('hidden')) {
             el.welcomeMessage.classList.add('hidden');
             el.welcomeMessage.style.display = 'none';
@@ -540,6 +647,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${role}`;
+        if (messageIndex !== undefined) {
+            msgDiv.dataset.messageIndex = messageIndex;
+        }
         
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
@@ -556,6 +666,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         msgDiv.appendChild(avatar);
         msgDiv.appendChild(contentDiv);
+        
+        // 为 AI 消息添加分支按钮
+        if (role === 'assistant' && messageIndex !== undefined) {
+            addBranchButton(msgDiv, messageIndex);
+        }
+        
         el.messagesContainer.appendChild(msgDiv);
         
         el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
@@ -959,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.interruptBtn.style.display = 'flex';
         el.sendBtn.style.display = 'none';
         
-        addMessage(text, 'user');
+        addMessage(text, 'user', state._msgCounter++);
         const { msgDiv: assistantMsg, contentDiv } = createStreamingMessageContainer();
         let orderedBlocks = [];          // [{type:'thinking'|'tool_call', content:string}]
         let responseContent = '';        // 回复文本
@@ -1022,6 +1138,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             clearTimeout(_streamRenderTimer);
                             contentDiv._streamDestroyed = true;
                             finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, true);
+                            assistantMsg.dataset.messageIndex = state._msgCounter;
+                            addBranchButton(assistantMsg, state._msgCounter++);
                             doneReceived = true;
                             await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
@@ -1031,6 +1149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             clearTimeout(_streamRenderTimer);
                             contentDiv._streamDestroyed = true;
                             finalizeStreamingContent(contentDiv, responseContent, orderedBlocks, false);
+                            assistantMsg.dataset.messageIndex = state._msgCounter;
+                            addBranchButton(assistantMsg, state._msgCounter++);
                             doneReceived = true;
                             await updateTokenStatus(data.total_tokens, data.max_tokens);
                             await updateFullStatus();
@@ -1095,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.chatInput.focus();
             
             // 刷新会话列表（放在 isStreaming=false 之后）
-            await renderSessionList();
+            await renderSessionList(true);
         }
     }
 
@@ -1147,6 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             state.activeSessionId = newSid;
+            state._msgCounter = 0;
             
             // 立即刷新 composer 状态（新会话从 0 开始）
             el.microCount.textContent = '0';
@@ -1237,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await API.getStatusText();
             if (data.message) {
-                addMessage(data.message, 'assistant');
+                addMessage(data.message, 'assistant', state._msgCounter++);
             }
         } catch (error) {
             showToast(`获取状态失败: ${error.message}`, 'error');
@@ -1315,11 +1436,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         var _thinkCount = 0, _toolCount = 0;
 
+        let msgCounter = 0;
+
         for (const m of messages) {
             if (m.role === 'tool') continue; // 不显示工具调用结果
 
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${m.role}`;
+            msgDiv.dataset.messageIndex = msgCounter;
 
             const avatar = document.createElement('div');
             avatar.className = 'message-avatar';
@@ -1359,6 +1483,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
+            // 为 AI 消息添加分支按钮（仅在 renderMessages 中有索引时）
+            if (m.role === 'assistant' && typeof msgCounter !== 'undefined') {
+                addBranchButton(msgDiv, msgCounter);
+            }
             el.messagesContainer.appendChild(msgDiv);
 
             // 用户消息如果有优化 Prompt，在下方插入黄色提示框
@@ -1368,6 +1496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 optDiv.textContent = '✨ Prompt 已优化: ' + m.optimized_prompt;
                 el.messagesContainer.appendChild(optDiv);
             }
+            msgCounter++;
         }
 
         el.messagesContainer.scrollTop = el.messagesContainer.scrollHeight;
@@ -1409,6 +1538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         _switchSaveInput();
         
         state.activeSessionId = sessionId;
+            state._msgCounter = 0;
         
         // 清除当前 DOM
         el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
@@ -1558,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 新 session
             state.activeSessionId = loadData.session_id || 'default';
+            state._msgCounter = 0;
 
             // 2. 清除当前显示的消息
             el.messagesContainer.querySelectorAll('.message').forEach(msg => msg.remove());
@@ -1631,18 +1762,18 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * 渲染左侧会话列表（活跃会话 + 已保存文件）
      */
-    async function renderSessionList() {
-        if (state.isStreaming) return;
+    async function renderSessionList(forceRefresh) {
+        if (state.isStreaming && !forceRefresh) return;
         
         try {
             const data = await fetchJsonWithTimeout('/api/sessions/list', 5000);
+            // 合并已保存文件 + 活跃会话（注册表中的会话可能未保存到磁盘）
             state.sessions = data.saved_files || [];
             
             // 按修改时间排序（最新在最前）
             state.sessions.sort(function(a, b) {
                 var ta = a.timestamp || '';
                 var tb = b.timestamp || '';
-                // 把 "2026-05-22 01:26:14" 转为时间戳数字比较
                 return new Date(tb.replace(' ', 'T')).getTime() - new Date(ta.replace(' ', 'T')).getTime();
             });
             
@@ -1693,17 +1824,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (s.path === state.currentActivePath) {
                             item.classList.add('active');
                         }
+
                         
                         const title = s.title || '（无标题）';
                         const displayTitle = title.length > 30 ? title.substring(0, 27) + '...' : title;
                         const mode = s.mode || '';
                         const msgCount = s.messages || 0;
                         
+                        // 判断是否为分支会话
+                        const isBranch = s.parent_session_id && s.parent_session_id !== '';
+                        const branchLabel = isBranch ? '<span class="session-item-branch-label" title="从 ' + escapeHtml(s.parent_session_id || '') + ' 分支">🌿 分支</span>' : '';
+                        // 分支会话文件名加 "分支" 前缀
+                        const displayFilename = isBranch ? '分支 - ' + (s.filename || '') : (s.filename || '');
+                        
                         item.innerHTML = `
-                            <div class="session-item-title" title="${escapeHtml(title)}">${escapeHtml(displayTitle)}</div>
+                            <div class="session-item-title" title="${escapeHtml(title)}">${escapeHtml(displayTitle)} ${branchLabel}</div>
                             <div class="session-item-meta">
                                 <span>${s.timestamp || ''}</span>
                                 <span>${msgCount} 条</span>
+                                ${isBranch ? `<span class="session-item-file">${escapeHtml(displayFilename)}</span>` : ''}
                                 ${mode ? `<span class="session-item-mode">${mode}</span>` : ''}
                             </div>
                             <button class="session-item-delete" title="删除会话">🗑️</button>

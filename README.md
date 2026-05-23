@@ -2,13 +2,13 @@
 
 > 智能终端助手 · 基于 AI 的代码分析与任务执行平台
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.2-blue.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 
 [🌏 **English**](README.en.md) | [🇨🇳 **中文**](README.md)
 
-TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式对话、命令执行、文件操作、Git 集成、会话管理、上下文压缩等功能。
+TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式对话、命令执行、文件操作、Git 集成、会话管理、上下文压缩、分支会话、智能 Prompt 优化等功能。
 
 ---
 
@@ -16,6 +16,7 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 
 | 日期 | 版本 | 说明 |
 |------|------|------|
+| 2026年5月23日 | **v1.1.2** | 🌿 **分支会话**：支持从任意 AI 回复创建独立分支会话（完整上下文继承）、智能 Prompt 优化（结合对话历史优化输入）、自动保存稳定性增强（修复 Windows 文件名非法字符问题） |
 | 2026年5月23日 | **v1.1.1** | 🎨 **UI 全面升级**：重构技能管理界面（独立弹窗、实时开关、增删自定义技能）、角色管理界面优化（角色切换、灵魂定义展示）、思考过程独立折叠展示、工具调用分段展示 |
 | 2026年5月22日 | v1.1.0 | 自定义角色系统（personas/目录动态扫描）、技能管理弹窗（增删/开关）、人格模板动态加载、soul.md 灵魂定义、修复角色切换与技能同步 Bug |
 | 2026年5月19日 | v1.0.0 | 首个正式版本：Web UI (FastAPI + SSE 流式)、19 个工具、内置 Composer 上下文压缩、会话管理、Smart/Plan 双模式 |
@@ -33,7 +34,9 @@ TennineClaw 是一个功能丰富的 AI 编程助手 Web 平台，支持流式�
 | 🐍 **Conda 管理** | 查看/切换/创建 Python 环境 |
 | 📋 **Plan 模式** | 结构化任务的规划、修改、分步执行 |
 | 💬 **会话管理** | 自动文件保存，支持分组、搜索、重命名 |
-| 🧩 **上下文压缩** | 自动/手动/微压缩，防止 Token 溢出 |
+| 🌿 **分支会话** | 在任意 AI 回复上创建独立分支，完整继承上文上下文，支持递归多层分支 |
+| 🧩 **上下文压缩** | 自动/手动/微压缩（Micro Composer），防止 Token 溢出 |
+| 🤖 **智能 Prompt 优化** | 结合完整对话历史对用户输入进行智能优化，使 AI 更准确理解上下文 |
 | 📊 **Token 监控** | 实时显示输入/输出 Token 数量及占比 |
 | 🎭 **自定义角色** | 支持通过 personas/ 目录动态加载角色，包含完整人格定义（OCEAN五因素、语言风格、行为偏好）+ soul.md 灵魂定义；角色切换界面优化，灵魂展示更直观 |
 | 🛠️ **技能管理弹窗** | 独立弹窗管理，支持技能实时开关、新增（名称+描述+guide）、删除自定义技能，界面全面重构更易用 |
@@ -75,167 +78,267 @@ python -m src.web_api
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ 🧠 TennineClaw               🌓 主题切换    [模型 ▼] [⚙️] │
-├─────────────────┬──────────────────────────────────┬──────────────────────┤
-│ 左侧面板         │ 中间区域                          │ 右侧面板             │
-│ 💬 新建对话      │                                   │ 🤖 模型信息          
-│ 📋 会话列表      │   🤖 AI 对话区域                   │ 🧩 已加载技能列表    
-│ 🔍 搜索会话      │   ┌──────────────────────┐       │ 🎭 当前角色          
-│                  │   │ 💭 推理过程（可折叠）│       │ 📊 Token 统计        
-│                  │   ├──────────────────────┤       │                      │
-│                  │   │ 🔧 工具调用（可折叠）│       │                      │
-│                  │   ├──────────────────────┤       │                      │
-│                  │   │ 💬 AI 回复           │       │                      │
-│                  │   └──────────────────────┘       │                      │
-│                  │                                   │                      │
-│                  │   [📝 输入消息...] [发送]         │                      │
-├─────────────────┴──────────────────────────────────┴──────────────────────┤
-│ 🔌 快捷键: Ctrl+Enter 发送 · Ctrl+Shift+Enter 换行 · ↑↓ 切换历史         │
+│ 🧠 TennineClaw                            v1.1.2          模型选择 ⚙️ 🌓 │
+├────────────────────────────────────────────────────────────────────────────┤
+│ ┌─────────────┐  ┌──────────────────────────────────────────────────────┐ │
+│ │ 📂 会话列表    │  │  💬 对话区域                                        │ │
+│ │              │  │                                                     │ │
+│ │  📅 今天      │  │  🧑 用户消息                                       │ │
+│ │  ├ 分支对话 🌿 │  │  🤖 AI 回复                     [🌿 创建分支]     │ │
+│ │  ├ 项目分析    │  │    ├ 💭 思考过程(可折叠)                           │ │
+│ │  ├ ...        │  │    ├ 🔧 工具调用(可折叠)                           │ │
+│ │  📅 昨天      │  │    └ 📝 最终回复                                   │ │
+│ │  └ ...        │  │                                                     │ │
+│ │              │  │  🧑 用户消息（已优化✨）                              │ │
+│ │  🌿 分支标签   │  │  🤖 AI 回复                     [🌿 创建分支]     │ │
+│ │              │  │                                                     │ │
+│ └─────────────┘  │  ┌────────────────────────────────────────────────┐   │
+│                  │  │ 💬 输入消息...                    [发送] [打断] │   │
+│                  │  └────────────────────────────────────────────────┘   │
+│                  └──────────────────────────────────────────────────────┘ │
+├────────────────────────────────────────────────────────────────────────────┤
+│ 📊 Token: 1,234 / 8,000 (15.4%)  📦 消息数: 6  ⚡ 工具: 3 🧩 Composer   │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🧩 技能系统
+## 🔌 API 参考
 
-技能系统是 TennineClaw 的核心扩展机制，支持技能的自由组合与动态加载。
+### 会话管理
 
-### 内置技能
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/session/new` | POST | 创建新会话 |
+| `/api/session/load` | POST | 加载指定会话文件 |
+| `/api/session/save` | POST | 保存当前会话 |
+| `/api/session/branch` | POST | **从指定消息创建分支会话**（v1.1.2 新增） |
+| `/api/session/title` | GET | 获取会话标题 |
+| `/api/sessions/list` | GET | 列出所有已保存会话 |
 
-| 技能名称 | 说明 |
-|---------|------|
-| 🔍 **文件搜索大师** | 精通文件搜索与内容检索，快速定位目标文件 |
-| 🧠 **上下文管理师** | 精通上下文管理与压缩，保持对话高效 |
-| 💻 **Shell 指挥官** | 精通系统命令执行，高效完成各类命令行操作 |
-| 📊 **情报分析师** | 精通系统信息采集与分析，快速获取关键情报 |
-| 📝 **代码魔改师** | 精通文件读写与代码修改，高效编辑代码文件 |
+#### POST /api/session/branch
 
-### 自定义技能
+**功能**：从当前会话的某条 AI 回复创建分支会话，完整继承该回复之前的所有上下文。
 
-支持在 `skills_custom/` 目录下通过 `skill.json` 定义自定义技能，系统自动发现并加载。
-
----
-
-## 🎭 角色系统（Persona）
-
-角色系统为 AI 助手赋予人格化特征，包含性格、语言风格和行为偏好。
-
-### 内置角色
-
-| 角色 | 特点 |
-|------|------|
-| 🧑‍💻 **Tennine** | 默认角色，古灵精怪的 AI 助手精灵，靠谱又调皮 |
-| 🧑‍🔧 **严谨工程师** | 专业、精确、注重规范的编程助手 |
-| 🎨 **创意极客** | 天马行空、创新导向的技术伙伴 |
-| 😺 **喵小糖** | 可爱系的 AI 助手，萌系沟通风格 |
-| ⚡ **高效助手** | 简洁直接、注重效率的任务执行者 |
-
-### 创建自定义角色
-
-1. 在 `personas/` 目录下创建新文件夹（如 `personas/我的角色/`）
-2. 在该文件夹中创建 `personality.json` 定义人格参数
-3. （可选）创建 `soul.md` 编写角色的灵魂定义与核心设定
-4. 刷新页面，角色自动出现在角色列表中
-
----
-
-## 💻 技术架构
-
-```
-TennineClaw/
-├── src/                    # 核心后端代码
-│   ├── main.py             # Agent 会话主逻辑
-│   ├── main_stream.py      # 流式对话处理模块（SSE 推送）
-│   ├── web_api.py          # FastAPI Web API 服务
-│   ├── config.py           # 全局配置管理
-│   ├── context.py          # 三重上下文管理器（Composer）
-│   ├── session_manager.py  # 会话管理（保存/加载/列表）
-│   ├── skill_engine.py     # 技能引擎（加载/匹配/执行）
-│   ├── skill_loader.py     # 技能加载器
-│   ├── skill_models.py     # 技能数据模型
-│   ├── personality_engine.py  # 人格引擎
-│   ├── personality_models.py  # 人格数据模型
-│   ├── mode_manager.py     # 模式管理器（Smart/Plan）
-│   ├── prompts.py          # 系统提示词生成
-│   ├── prompt_optimizer.py # Prompt 智能优化器
-│   ├── safety.py           # 安全检测与高危命令拦截
-│   └── token_utils.py      # Token 统计与展示
-├── static/                 # 前端静态资源
-│   ├── index.html          # 主页面
-│   ├── css/                # 样式文件
-│   └── js/                 # JavaScript 文件
-│       ├── app.js          # 主应用逻辑
-│       ├── api.js          # API 请求封装
-│       ├── personality.js  # 角色管理 UI
-│       ├── skill_manager.js # 技能管理弹窗
-│       └── patch_segmented.js # 思考/工具调用分段展示
-├── personas/               # 角色定义目录（动态扫描）
-│   ├── Tennine/
-│   ├── 严谨工程师/
-│   ├── 创意极客/
-│   ├── 喵小糖/
-│   └── 高效助手/
-├── skills/                 # 技能定义目录
-│   ├── 文件搜索大师/
-│   ├── 上下文管理师/
-│   ├── Shell 指挥官/
-│   ├── 情报分析师/
-│   └── 代码魔改师/
-├── skills_custom/          # 自定义技能目录
-├── sessions/               # 会话数据（自动保存）
-├── config/                 # 用户配置（含 API Key）
-├── docs/                   # 开发文档
-└── scripts/                # 启动脚本
-```
-
----
-
-## 🔧 自定义技能开发
-
-### 技能目录结构
-
-```
-skills_custom/我的技能/
-├── skill.json        # 技能元数据 + 工具定义（必需）
-└── implement.py      # 工具实现（可选，默认加载）
-```
-
-### skill.json 格式
-
+**请求体**：
 ```json
 {
-  "name": "我的技能",
-  "description": "技能描述",
-  "version": "1.0.0",
-  "guide": "使用指南文本，会注入到 system prompt 中",
-  "personalities": ["Tennine", "严谨工程师"],
-  "tools": [
-    {
-      "name": "my_tool",
-      "description": "工具描述",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "param1": { "type": "string", "description": "参数说明" }
-        },
-        "required": ["param1"]
-      }
-    }
-  ]
+  "session_id": "源会话ID",
+  "message_index": 3
 }
 ```
 
+**响应**：
+```json
+{
+  "session_id": "新分支会话ID",
+  "save_path": "sessions/[分支]xxx.json",
+  "parent_session_id": "源会话ID",
+  "trigger_message_index": 3,
+  "trigger_message_preview": "AI 回复的预览文本",
+  "message_count": 4
+}
+```
+
+**分支数据模型**：分支会话的 JSON 文件包含以下元数据：
+- `parent_session_id`: 源会话 ID
+- `trigger_message_index`: 触发分支的消息索引
+- `trigger_message_preview`: 触发消息的预览文本
+
+### 对话
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/chat/stream` | POST | 流式聊天（SSE） |
+| `/api/chat/messages` | GET | 获取会话消息列表 |
+
+### 状态
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/status` | GET | 获取会话状态摘要 |
+| `/api/status/realtime` | GET | 获取实时 Token 状态 |
+
+### 角色与技能
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/personality/template` | POST | 应用人格模板 |
+| `/api/personality/templates/all` | GET | 列出所有人格模板 |
+| `/api/personality/equipped-skills` | GET | 获取已装备技能 |
+| `/api/skills/registry` | GET | 获取技能注册表 |
+
+### 其他
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/env/current` | GET | 获取当前环境信息 |
+| `/api/models` | GET | 获取可用模型列表 |
+| `/api/plan/check` | GET | 检查当前 Plan 状态 |
+
 ---
 
-## 🔗 API 文档
+## 🗂️ 项目结构
 
-详细的 API 参考文档请参见：
-
-- [API 参考文档（中文）](docs/API_REFERENCE.md)
-- [API Reference (English)](docs/API_REFERENCE.en.md)
+```
+TennineClaw/
+├── src/
+│   ├── web_api.py            # FastAPI Web 服务（所有 API 端点）
+│   ├── main.py               # AgentSession 核心类
+│   ├── main_stream.py        # 流式消息处理（SSE 流式生成）
+│   ├── session_manager.py    # 会话持久化（保存/加载/自动保存）
+│   ├── prompt_optimizer.py   # Prompt 智能优化器（含上下文感知优化）
+│   ├── prompts.py            # 系统提示词构建
+│   ├── context.py            # Composer 上下文压缩（Micro/Auto/Manual）
+│   ├── config.py             # 全局配置
+│   ├── mode_manager.py       # Smart/Plan 模式管理
+│   ├── tools.py              # 工具定义与注册
+│   ├── token_utils.py        # Token 计数工具
+│   ├── prompt_optimizer.py   # Prompt 优化
+│   ├── skill_engine.py       # 技能引擎
+│   ├── personality_engine.py # 人格引擎
+│   └── prompt_optimizer.py   # Prompt 优化
+├── static/
+│   ├── index.html            # 前端入口
+│   ├── js/
+│   │   ├── app.js            # 主应用逻辑（会话管理、消息渲染、分支会话）
+│   │   └── api.js            # API 客户端封装
+│   └── css/
+│       └── style.css         # 样式表
+├── sessions/                 # 会话文件存储目录
+├── personas/                 # 角色定义目录
+├── requirements.txt
+├── run.bat
+└── README.md
+```
 
 ---
 
-## 📄 许可
+## 🧑‍💻 开发
 
-本项目基于 MIT 许可证开源 — 详见 [LICENSE](LICENSE) 文件。
+### 环境要求
+
+- **Python** 3.10+
+- **pip** (Python 包管理器)
+
+### 本地开发
+
+```bash
+# 克隆仓库
+git clone https://github.com/your-org/tennineclaw.git
+cd TennineClaw
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动开发服务器（热重载）
+python -m src.web_api
+
+# 访问
+open http://127.0.0.1:7861
+```
+
+### 常用命令
+
+```bash
+# 启动服务
+python -m src.web_api
+
+# 启动服务（指定端口）
+python -m src.web_api --port 7861
+```
+
+### 代码风格
+
+- Python：遵循 [PEP 8](https://peps.python.org/pep-0008/) 规范
+- JavaScript：ES6+
+- HTML/CSS：语义化标签，CSS 变量主题
+
+---
+
+## 🧠 工作原理
+
+### AI 对话流程
+
+```
+用户输入
+  ↓
+Prompt 优化器（可选）
+  ↓  结合完整对话历史（self.msgs）进行智能优化
+  ↓
+Micro Composer（自动）
+  ↓  压缩过长上下文，保留最近 N 轮对话
+  ↓
+构建系统提示词 + 工具定义
+  ↓
+调用 AI 模型（流式）
+  ↓
+工具调用 ↔ 工具执行
+  ↓
+流式输出回复
+  ↓
+自动保存到会话文件
+```
+
+### 上下文压缩策略
+
+本系统采用分层次的上下文压缩策略：
+
+| 层级 | 名称 | 触发条件 | 说明 |
+|------|------|---------|------|
+| 1 | Micro Composer | 自动（每轮） | 移除 tool_call/function 中间消息，保留最近 N 轮完整对话 |
+| 2 | Auto Composer | 自动（超阈值） | 超出 Token 阈值时自动摘要历史对话 |
+| 3 | Manual Composer | 手动（/compact） | 用户手动触发，人工控制摘要粒度 |
+
+### 分支会话机制（v1.1.2 新增）
+
+```
+源会话:
+  👤: 第一个问题
+  🤖: 第一个回答  ──→ 🌿 点击创建分支
+  👤: 第二个问题
+  🤖: 第二个回答
+
+分支会话（独立）:
+  👤: 第一个问题（继承自源会话）
+  🤖: 第一个回答（继承自源会话）
+  👤: 在分支中继续提问（独立发展）
+  🤖: 分支中的回答
+```
+
+- 分支独立保存为单独的 JSON 文件
+- 分支元数据记录 `parent_session_id` 和 `trigger_message_index`
+- 支持递归多层分支（分支中再创建分支）
+- 原会话完全不受影响
+
+---
+
+## 🗺️ 路线图
+
+- [x] 基础 AI 对话（流式 SSE）
+- [x] 工具调用（19 个内置工具）
+- [x] Smart / Plan 双模式
+- [x] 会话持久化与管理
+- [x] 上下文压缩（Micro/Auto/Manual Composer）
+- [x] Token 实时监控
+- [x] 自定义角色系统（personas 动态扫描）
+- [x] 技能管理弹窗
+- [x] 思考过程独立展示
+- [x] 工具调用分段展示
+- [x] 分支会话（从任意 AI 回复创建独立会话）
+- [x] 智能 Prompt 优化（结合上下文优化输入）
+- [ ] 多人协作会话
+- [ ] 插件系统
+- [ ] 会话导出（Markdown / PDF）
+- [ ] 更多模型支持（Claude, Gemini 等）
+- [ ] 知识库 RAG 集成
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+> **TennineClaw** — 由 **Tennine** 开发与维护

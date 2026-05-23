@@ -252,12 +252,20 @@ class StatusResponse(BaseModel):
 
 class SaveRequest(BaseModel):
     title: Optional[str] = ""
+    session_id: str = ""
 
 class LoadRequest(BaseModel):
     path: str
 
 class DeleteRequest(BaseModel):
     path: str
+class BranchRequest(BaseModel):
+    """分支会话请求"""
+    session_id: str
+    message_index: int
+
+
+
 
 class EnvRequest(BaseModel):
     path: str
@@ -430,6 +438,12 @@ async def chat_stream(req: ChatRequest):
                 })
                 yield f"data: {done_data}\n\n"
 
+            # 流式完成后自动保存会话
+            try:
+                session._auto_save_if_needed()
+            except Exception:
+                pass
+
         except Exception as e:
             session.is_streaming = False
             _update_status_cache()
@@ -458,7 +472,139 @@ async def create_session():
     save_path = auto_save(session)
     if save_path:
         session._session_save_path = save_path
+
     return {"session_id": sid, "status": "success"}
+
+
+@app.post("/api/session/branch")
+async def create_branch_session(req: BranchRequest):
+    """从指定消息创建分支会话"""
+    # 获取源会话
+    src_session, src_lock = _get_session_and_lock(req.session_id)
+    if src_session is None:
+        raise HTTPException(status_code=404, detail=f"源会话不存在: {req.session_id}")
+    
+    with src_lock:
+        src_msgs = list(getattr(src_session, '_display_msgs', src_session.msgs))
+        msg_idx = req.message_index
+    
+    if msg_idx < 0 or msg_idx >= len(src_msgs):
+        raise HTTPException(status_code=400, detail=f"消息索引越界: {msg_idx}, 总消息数: {len(src_msgs)}")
+    
+    # 获取触发消息的预览文本
+    trigger_msg = src_msgs[msg_idx]
+    trigger_content = trigger_msg.get("content", "")
+    trigger_preview = (trigger_content[:80] + "...") if len(trigger_content) > 80 else trigger_content
+    
+    # 截取上下文：从第一条到触发消息之后最近的 AI 回复（含）
+    # 确保分支的最后一条消息由 AI 发出
+    branch_end = msg_idx + 1
+    if trigger_msg.get("role") != "assistant":
+        # 如果触发消息不是 AI 发出的，向后找最近的 AI 消息
+        for i in range(msg_idx + 1, len(src_msgs)):
+            if src_msgs[i].get("role") == "assistant":
+                branch_end = i + 1
+                break
+    branch_msgs = src_msgs[: branch_end]
+    
+    # 保存源会话
+    from .session_manager import auto_save as auto_save_func
+    try:
+        src_save_path = getattr(src_session, '_session_save_path', None)
+        auto_save_func(src_session, session_save_path=src_save_path)
+    except Exception:
+        pass
+    
+    # 创建新会话
+    sid = _session_registry.create()
+    _session_registry.set_active(sid)
+    session = _session_registry.get(sid)
+    session.set_status_update_callback(lambda: _update_status_cache(session.session_id))
+    
+    # 注入分支上下文
+    if branch_msgs:
+        session.msgs = [dict(m) for m in branch_msgs]
+        session._display_msgs = [dict(m) for m in branch_msgs]
+    
+    # 复制元数据（原始输入记录 & 优化 Prompt 记录）
+    src_original_inputs = getattr(src_session, 'original_user_inputs', {})
+    src_optimized_prompts = getattr(src_session, 'optimized_prompts', {})
+    # 只复制触发消息之前的记录（与截取的消息索引对应）
+    src_original_inputs = {k: v for k, v in src_original_inputs.items() if k < msg_idx + 1}
+    src_optimized_prompts = {k: v for k, v in src_optimized_prompts.items() if k < msg_idx + 1}
+    session.original_user_inputs = src_original_inputs
+    session.optimized_prompts = src_optimized_prompts
+    
+    # 设置分支元数据
+    session.parent_session_id = req.session_id
+    # trigger_message_index 指向分支中实际最后一条消息（AI 消息）的索引
+    session.trigger_message_index = branch_end - 1
+    # 更新预览文本为最后一条消息的内容
+    last_msg = branch_msgs[-1] if branch_msgs else trigger_msg
+    last_content = last_msg.get("content", "")
+    trigger_preview = (last_content[:80] + "...") if len(last_content) > 80 else last_content
+    session.trigger_message_preview = trigger_preview
+    
+    # 根据触发消息内容生成标题
+    if trigger_msg.get("role") == "user":
+        title_text = trigger_content[:50]
+    else:
+        title_text = trigger_content[:50]
+    session.session_title = ("[分支] " + title_text)[:60]
+    session._title_set = True
+    
+    # 自动保存新会话 - 确保 _session_save_path 绝对正确设置
+    from .session_manager import save_session as direct_save
+    from .config import SESSION_SAVE_DIR
+    import os, datetime, re
+    
+    _title = getattr(session, "session_title", "") or "分支会话"
+    _safe = re.sub(r'[\\/:*?"<>|\n\r\t]', '', _title).strip() or "分支会话"
+    _ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    _filename = f"{_safe}_{_ts}.json"
+    _path = os.path.join(SESSION_SAVE_DIR, _filename)
+    
+    # 直接 save_session 到明确路径，100% 确保文件被创建
+    try:
+        direct_save(session, path=_path)
+        session._session_save_path = _path
+        print(f"[DEBUG_BRANCH] direct_save SUCCESS to {_path}", flush=True)
+    except Exception as e2:
+        print(f"[DEBUG_BRANCH] direct_save FAILED: {e2}", flush=True)
+        # traceback removed
+        # auto_save 兜底
+        try:
+            save_path = auto_save_func(session)
+            if save_path:
+                session._session_save_path = save_path
+                print(f"[DEBUG_BRANCH] auto_save SUCCESS to {save_path}", flush=True)
+            else:
+                print(f"[DEBUG_BRANCH] auto_save returned empty path!", flush=True)
+        except Exception as e3:
+            print(f"[DEBUG_BRANCH] auto_save FAILED: {e3}", flush=True)
+            traceback.print_exc()
+            # 最后尝试 save_session 到随机路径
+            try:
+                import uuid
+                _fallback = os.path.join(SESSION_SAVE_DIR, f"branch_{uuid.uuid4().hex[:8]}.json")
+                direct_save(session, path=_fallback)
+                session._session_save_path = _fallback
+                print(f"[DEBUG_BRANCH] fallback SUCCESS to {_fallback}", flush=True)
+            except Exception as e4:
+                print(f"[DEBUG_BRANCH] fallback ALL FAILED: {e4}", flush=True)
+                traceback.print_exc()
+                pass
+    
+    _update_status_cache()
+    
+    return {
+        "session_id": sid,
+        "status": "success",
+        "parent_session_id": req.session_id,
+        "trigger_message_index": branch_end - 1,
+        "message_count": len(branch_msgs),
+        "save_path": getattr(session, '_session_save_path', ''),
+    }
 
 
 @app.get("/api/sessions/list")
@@ -477,20 +623,15 @@ async def list_all_sessions():
             "title": getattr(session, 'session_title', '') or sid[:8],
             "msg_count": len(getattr(session, '_display_msgs', None) or getattr(session, 'msgs', [])),
             "is_streaming": getattr(session, 'is_streaming', False),
+            "parent_session_id": getattr(session, 'parent_session_id', ''),
+            "trigger_message_index": getattr(session, 'trigger_message_index', -1),
+            "trigger_message_preview": getattr(session, 'trigger_message_preview', ''),
         })
 
     return {
         "active_sessions": active_sessions,
-        "saved_files": saved_files,  # 不过滤，全部显示
+        "saved_files": saved_files,
     }
-    sessions = []
-    for sid, session in _session_registry.all_sessions().items():
-        sessions.append({
-            "session_id": sid,
-            "title": getattr(session, 'session_title', '') or sid[:8],
-            "msg_count": len(getattr(session, '_display_msgs', session.msgs)),
-        })
-    return {"sessions": sessions}
 
 
 @app.get("/api/session/active")
@@ -723,13 +864,31 @@ async def get_session_title():
 @app.post("/api/session/save")
 async def save_session_api(req: SaveRequest):
     """保存当前会话"""
-    session, lock = _get_session_and_lock()
-    with lock:
-        if req.title and req.title.strip():
-            session.set_title(req.title.strip())
-        result = session.save()
-    _update_status_cache()
-    return {"message": result}
+    if req.session_id:
+        # 指定 session_id 保存
+        session = _session_registry.get(req.session_id)
+        if session is None:
+            return {"status": "error", "detail": "会话不存在"}
+        lock = _session_registry.get_lock(req.session_id) or threading.Lock()
+        with lock:
+            if req.title and req.title.strip():
+                session.set_title(req.title.strip())
+            # 使用 _session_save_path 覆盖同一文件
+            save_path = getattr(session, '_session_save_path', None)
+            result = session.save(path=save_path)
+        _update_status_cache()
+        return {"message": result}
+    else:
+        # 默认：保存当前活跃会话
+        session, lock = _get_session_and_lock()
+        with lock:
+            if req.title and req.title.strip():
+                session.set_title(req.title.strip())
+            # 使用 _session_save_path 覆盖同一文件
+            save_path = getattr(session, '_session_save_path', None)
+            result = session.save(path=save_path)
+        _update_status_cache()
+        return {"message": result}
 
 
 # ============================================================

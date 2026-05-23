@@ -2269,3 +2269,94 @@ html, body {
     max-height: 180px;
     overflow-y: auto;
 }
+
+
+/* ============================================================
+   分支会话按钮 & 标签样式
+   ============================================================ */
+
+/* 分支按钮 - 消息上的小图标 */
+.message .branch-btn {
+    position: absolute;
+    bottom: -12px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: var(--shadow-sm);
+    line-height: 1;
+}
+
+.message:hover .branch-btn {
+    opacity: 1;
+}
+
+.message .branch-btn:hover {
+    opacity: 1;
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    transform: scale(1.15);
+    box-shadow: var(--shadow-md);
+}
+
+/* 有分支按钮的消息需要留出底部空间 */
+.message.has-branch-btn {
+    position: relative;
+    padding-bottom: 4px;
+}
+
+/* 会话列表中的分支标签 */
+.session-item-branch-label {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(52, 211, 153, 0.15);
+    color: var(--accent-success);
+    margin-left: 4px;
+    vertical-align: middle;
+    font-weight: 500;
+}
+
+/* 分支按钮动画 */
+@keyframes branchPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.branch-btn:active {
+    animation: branchPulse 0.3s ease;
+}
+
+
+/* 会话列表文件名显示 */
+.session-item-file {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-secondary);
+    margin-left: 4px;
+    vertical-align: middle;
+    font-weight: 400;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+

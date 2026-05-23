@@ -6,18 +6,35 @@
 # ============================================================
 
 
-def optimize_prompt(original: str, client) -> str:
+def optimize_prompt(original: str, client, context_msgs: list = None) -> str:
     """将用户的原始 prompt 优化为更结构化、更清晰的格式
+
+    如果提供了 context_msgs（对话历史），优化时会结合完整上下文，
+    使优化后的 prompt 能包含上下文信息（如引用之前的对话内容）。
 
     Args:
         original: 用户原始输入的 prompt
         client: OpenAI 客户端实例
+        context_msgs: 对话历史消息列表（压缩后的 self.msgs），可选
 
     Returns:
         优化后的结构化 prompt
     """
     if not original or not original.strip():
         return original
+
+    # ---- 构建上下文信息 ----
+    context_str = ""
+    if context_msgs:
+        lines = []
+        for msg in context_msgs:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            # 截断过长内容（保留前 200 字符）
+            if len(content) > 200:
+                content = content[:200] + "..."
+            lines.append(f"{role}: {content}")
+        context_str = "\n".join(lines)
 
     system_msg = (
         "你是一个专业的 Prompt 优化助手。你的任务是将用户的原始提问"
@@ -26,7 +43,27 @@ def optimize_prompt(original: str, client) -> str:
         "直接输出优化后的结果，不要添加任何额外解释或前缀。"
     )
 
-    user_msg = f"""请将以下用户提问优化为更清晰、更结构化的格式。
+    # 有上下文时：包含完整对话历史
+    if context_str:
+        user_msg = f"""请基于以下完整的对话上下文来优化用户当前输入。
+
+【对话上下文】
+{context_str}
+
+【用户当前输入】
+{original}
+
+【优化要求】
+- 基于完整的对话上下文，理解用户的真实意图和引用关系
+- 如果用户当前输入引用了之前的对话内容，请在优化结果中明确体现
+- 补充上下文中对理解当前输入有帮助的关键信息
+- 保持用户原始意图和核心需求不变
+- 拆解为清晰的步骤或要点（如果有多个要求）
+- 使用结构化格式（分段、列表、编号等）
+- 语言简洁明确，去掉冗余表达
+- 直接输出优化后的结果，不要加任何前缀或解释说明"""
+    else:
+        user_msg = f"""请将以下用户提问优化为更清晰、更结构化的格式。
 
 【原始提问】
 {original}

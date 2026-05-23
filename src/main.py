@@ -418,7 +418,12 @@ class AgentSession(AgentSessionStreamMixin):
         """每轮对话后自动保存为独立的会话文件"""
         if SESSION_AUTO_SAVE:
             from .session_manager import auto_save
+            # [DEBUG] 追踪保存路径
+            sid = getattr(self, 'session_id', 'unknown')[:12]
+            save_path_val = getattr(self, '_session_save_path', '__NONE__')
+            print(f"[DEBUG_SAVE] session={sid} _session_save_path={save_path_val}", flush=True)
             path = auto_save(self, session_save_path=self._session_save_path)
+            print(f"[DEBUG_SAVE] auto_save returned={path}", flush=True)
             if path:
                 self._session_save_path = path
 
