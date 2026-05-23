@@ -1,6 +1,6 @@
 # TennineClaw Function Reference
 
-> Version: 1.1.0 | Auto-generated on May 22, 2026
+> Version: 1.1.2 | Auto-generated on May 23, 2026
 
 [🇨🇳 **中文**](API_REFERENCE.md) | [🌏 **English**](API_REFERENCE.en.md)
 
@@ -86,21 +86,32 @@ Streaming conversation processing. Handles SSE streaming, tool call execution, a
 
 FastAPI web service layer. Provides RESTful API endpoints and static file serving.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/chat/stream` | POST | Streaming chat (SSE) |
-| `/api/sessions` | GET | List all sessions |
-| `/api/sessions` | POST | Create new session |
-| `/api/sessions/{id}` | GET | Get session details |
-| `/api/sessions/{id}` | DELETE | Delete session |
-| `/api/sessions/{id}/save` | POST | Save session |
-| `/api/models` | GET | List available models |
-| `/api/models/switch` | POST | Switch current model |
-| `/api/config` | GET | Get configuration |
-| `/api/config` | POST | Update configuration |
-| `/api/status` | GET | Get system status |
-| `/api/tools` | GET | List available tools |
-| ... and more (37+ routes total) | | |
+| Route | Method | Description |
+|------|------|------|
+| `/` | GET | Return main page |
+| `/api/chat` | POST | Send message (non-streaming) |
+| `/api/chat/stream` | POST | Send message (SSE streaming) |
+| `/api/session/create` | POST | Create new session |
+| `/api/session/branch` | POST | **Create branch from message** (v1.1.2 new) |
+| `/api/session/load` | POST | Load session from file |
+| `/api/sessions/list` | GET | List saved session files |
+| `/api/session/active` | GET | Get current active session |
+| `/api/session/activate` | POST | Activate specified session |
+| `/api/session/interrupt` | POST | Interrupt streaming reply |
+| `/api/session/delete` | DELETE | Delete session from registry |
+| `/api/session/switch/smart` | POST | Switch to Smart mode |
+| `/api/session/switch/plan` | POST | Switch to Plan mode |
+| `/api/session/clear` | POST | Clear context |
+| `/api/session/compact` | POST | Compact context |
+| `/api/help` | GET | Get help text |
+| `/api/status` | GET | Full status (mode, message count, tokens, usage rate, etc.) |
+| `/api/status/realtime` | GET | Real-time status (compact) |
+| `/api/session/title` | GET | Get session title |
+| `/api/session/save` | POST | Save session |
+| `/api/chat/messages` | GET | Get session messages |
+| `/api/models` | GET | Get model list |
+| `/api/models/switch` | POST | Switch model |
+| `/api/models/add` | POST
 
 ---
 
@@ -112,14 +123,14 @@ Session persistence and management. Handles saving, loading, searching, and regi
 
 | Function | Description |
 |----------|-------------|
-| `save_session(session_id, data)` | Save session data to file |
-| `load_session(session_id)` | Load session from file |
-| `delete_session(session_id)` | Delete a session |
-| `list_sessions(group=None)` | List all sessions, optionally filtered by group |
-| `search_sessions(keyword)` | Search sessions by keyword |
-| `rename_session(session_id, new_name)` | Rename a session |
-| `get_session_path(session_id)` | Get the file path for a session |
-| `get_global_registry()` | Get the global session registry |
+| `save_session(session, path, save_dir)` | Serialize session to JSON file (includes parent_session_id, trigger_message_index, trigger_message_preview) |
+| `load_session(path)` | Load session data from JSON file |
+| `delete_session(path)` | Delete session file |
+| `list_sessions()` | List all saved sessions |
+| `auto_save(session, session_save_path)` | Auto-save session as independent file |
+| `restore_session(session, path)` | Restore session state from file |
+| `ensure_session_dir(save_dir)` | Ensure session directory exists |
+| `SessionRegistry.create()` | Create new session, return session_id |
 
 ### context.py
 

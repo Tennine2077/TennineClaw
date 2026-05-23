@@ -1,6 +1,6 @@
 ﻿# TennineClaw 函数参考
 
-> 版本：1.1.0 | 自动生成于 2026年5月22日
+> 版本：1.1.2 | 自动生成于 2026年5月23日
 
 [🌏 English](API_REFERENCE.en.md) | [🇨🇳 中文](API_REFERENCE.md)
 
@@ -100,6 +100,8 @@ FastAPI Web 服务。37 条 REST API 路由，处理前端请求。
 | `/api/chat` | POST | 发送消息（非流式） |
 | `/api/chat/stream` | POST | 发送消息（SSE 流式） |
 | `/api/session/create` | POST | 创建新会话 |
+| `/api/session/branch` | POST | **从指定消息创建分支会话**（v1.1.2 新增） |
+| `/api/session/load` | POST | 从文件加载会话 |
 | `/api/sessions/list` | GET | 列出已保存会话文件 |
 | `/api/session/active` | GET | 获取当前活跃会话 |
 | `/api/session/activate` | POST | 激活指定会话 |
@@ -157,14 +159,14 @@ FastAPI Web 服务。37 条 REST API 路由，处理前端请求。
 |------|------|
 | `_estimate_msgs_tokens(msgs)` | 估算消息列表的 Token 数 |
 | `ensure_session_dir(save_dir)` | 确保会话目录存在 |
-| `save_session(session, path, save_dir)` | 序列化会话为 JSON 文件 |
+| `save_session(session, path, save_dir)` | 序列化会话为 JSON 文件（含 parent_session_id、trigger_message_index 等分支元数据） |
 | `load_session(path)` | 从 JSON 文件加载会话数据 |
 | `restore_session(session, path)` | 从文件恢复会话状态到 session 对象 |
 | `list_sessions()` | 列出所有已保存会话 |
 | `delete_session(path)` | 删除会话文件 |
 | `auto_save(session)` | 自动保存为独立文件 |
 | `get_session_display_list()` | 获取格式化的会话列表 |
-| `get_session_title_from_path(path)` | 从文件路径读取标题 |
+| ~~`get_session_title_from_path(path)`~~ | ~~已删除~~（v1.1.2 移除未使用函数） |
 | `SessionRegistry.create()` | 创建新会话，返回 session_id |
 | `SessionRegistry.get(session_id)` | 获取 session 实例 |
 | `SessionRegistry.get_lock(session_id)` | 获取 session 锁 |

@@ -1,6 +1,6 @@
 # TennineClaw Project Documentation
 
-> **Version**: 1.1.0
+> **Version**: 1.1.2
 > **Language**: English | [🇨🇳 中文](DOCUMENTATION.md)
 > **Description**: Intelligent Terminal Assistant — AI-Powered Code Analysis & Task Execution Web Platform
 > **License**: MIT License

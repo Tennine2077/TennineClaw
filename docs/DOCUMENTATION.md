@@ -1,6 +1,6 @@
 ﻿# TennineClaw 项目说明文档
 
-> **版本**: 1.1.0
+> **版本**: 1.1.2
 > **语言**: 中文 | [🌏 English](DOCUMENTATION.en.md)  
 > **描述**: 智能终端助手 — 基于 AI 的代码分析与任务执行 Web 平台  
 > **许可**: MIT License  
@@ -119,7 +119,7 @@ Prompt 优化 (prompt_optimizer.py) → 追加 system prompt 注入
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `__version__` | `"1.1.0"` | 当前版本号，API 响应和前端显示均引用此值 |
+| `__version__` | `"1.1.2"` | 当前版本号，API 响应和前端显示均引用此值 |
 | `__description__` | `"Intelligent Terminal Assistant - AI 编程助手"` | 项目描述 |
 | `__license__` | `"MIT"` | 开源许可协议 |
 
