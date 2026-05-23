@@ -9,6 +9,6 @@
 # 许可：MIT License
 # ============================================================
 
-__version__ = "1.1.0"
+__version__ = "1.1.2"
 __description__ = "Intelligent Terminal Assistant - AI 编程助手"
 __license__ = "MIT"

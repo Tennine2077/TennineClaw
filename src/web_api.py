@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # TennineClaw - FastAPI Web API 层
 # ============================================================
 # 提供完整的 RESTful API，支持：
@@ -333,7 +333,7 @@ async def chat_stream(req: ChatRequest):
 
     SSE 事件类型：
       - type: chunk      → AI 文本回复片段（段落）
-      - type: tool_call  → 工具调用通知（🔧）
+      - type: tool_call  → 工具调用通知（[U+1F527]）
       - type: done       → 流式传输完成（含 Token 统计）
       - type: error      → 错误信息
       - type: interrupted → 用户打断
@@ -396,7 +396,7 @@ async def chat_stream(req: ChatRequest):
                 elif chunk == "\n\n⏹️ **已中断**":
                     was_interrupted = True
                     yield f"data: {json.dumps({'type': 'interrupted', 'content': chunk})}\n\n"
-                elif chunk.startswith('🔧'):
+                elif chunk.startswith('[U+1F527]'):
                     yield f"data: {json.dumps({'type': 'tool_call', 'content': chunk})}\n\n"
                 elif chunk.startswith('__REASONING__'):
                     reasoning_content = chunk[13:]  # 去掉前缀（__REASONING__ 共13字符）
@@ -721,7 +721,7 @@ async def compact_context():
             finally:
                 lock.release()
         else:
-            return "⏳ 当前有流式请求正在处理（等待超时 30 秒），请稍后再试。"
+            return "[Wait] 当前有流式请求正在处理（等待超时 30 秒），请稍后再试。"
 
     try:
         result = await asyncio.wait_for(
@@ -747,7 +747,7 @@ async def get_help():
         finally:
             lock.release()
     else:
-        help_text = "⏳ 当前有请求正在处理，请稍后再试。"
+        help_text = "[Wait] 当前有请求正在处理，请稍后再试。"
     return {"message": help_text}
 
 
@@ -763,7 +763,7 @@ async def get_context_status():
         finally:
             lock.release()
     else:
-        result = "⏳ 当前有请求正在处理，请稍后再试。"
+        result = "[Wait] 当前有请求正在处理，请稍后再试。"
     return {"message": result}
 
 
@@ -824,7 +824,7 @@ async def get_realtime_status():
         status = (
             f"**模式**: {mode_name} | "
             f"**消息**: {msg_count} 条 | "
-            f"📊合计: {total_tk:,} ({usage_pct:.1f}%)"
+            f"[Chart]合计: {total_tk:,} ({usage_pct:.1f}%)"
         )
     else:
         from .config import MAX_CTX_TOKENS as max_ctx
@@ -834,10 +834,10 @@ async def get_realtime_status():
         )
 
     if notification:
-        status += f"\n\n🔔 **{notification}**"
+        status += f"\n\n[Bell] **{notification}**"
 
     if is_streaming or from_cache:
-        status += "\n\n⏳ *AI 响应中...*"
+        status += "\n\n[Wait] *AI 响应中...*"
 
     return {
         "status_text": status,
@@ -1040,8 +1040,8 @@ async def switch_model(req: ModelSwitchRequest):
     session, lock = _get_session_and_lock()
     with lock:
         result = session.switch_model(req.model_name.strip())
-    if result.startswith("❌"):
-        raise HTTPException(status_code=400, detail=result.replace("❌ ", ""))
+    if result.startswith("[X]"):
+        raise HTTPException(status_code=400, detail=result.replace("[X] ", ""))
     _update_status_cache()
     return {"message": result, "current": session.current_model}
 
@@ -1054,8 +1054,8 @@ async def add_model(req: ModelAddRequest):
     session, lock = _get_session_and_lock()
     with lock:
         result = session.add_custom_model(req.name, req.code, req.base_url, req.api_key)
-    if result.startswith("❌"):
-        raise HTTPException(status_code=400, detail=result.replace("❌ ", ""))
+    if result.startswith("[X]"):
+        raise HTTPException(status_code=400, detail=result.replace("[X] ", ""))
     models = session.get_available_models()
     current = session.current_model
     return {"message": result, "models": models, "current": current}
@@ -1067,8 +1067,8 @@ async def delete_model(code: str):
     session, lock = _get_session_and_lock()
     with lock:
         result = session.delete_custom_model(code.strip())
-    if result.startswith("❌"):
-        raise HTTPException(status_code=400, detail=result.replace("❌ ", ""))
+    if result.startswith("[X]"):
+        raise HTTPException(status_code=400, detail=result.replace("[X] ", ""))
     models = session.get_available_models()
     current = session.current_model
     return {"message": result, "models": models, "current": current}
@@ -1088,7 +1088,7 @@ async def update_model_config(code: str, req: ConfigRequest):
     with lock:
         session.update_model_api(code.strip(), req.api_base_url, req.api_key)
     _update_status_cache()
-    return {"message": f"✅ 已更新模型 API 配置", "current": session.current_model}
+    return {"message": f"[OK] 已更新模型 API 配置", "current": session.current_model}
 
 
 # ============================================================
@@ -1240,8 +1240,8 @@ async def switch_conda_env(req: CondaSwitchRequest):
         raise HTTPException(status_code=400, detail="环境名不能为空")
     with _session_lock:
         result = _session.switch_conda_env(req.env_name.strip())
-    if result.startswith("❌"):
-        raise HTTPException(status_code=400, detail=result.replace("❌ ", ""))
+    if result.startswith("[X]"):
+        raise HTTPException(status_code=400, detail=result.replace("[X] ", ""))
     _update_status_cache()
     return {"message": result}
 
@@ -1258,8 +1258,8 @@ async def create_conda_env(req: CondaCreateRequest):
         raise HTTPException(status_code=400, detail="环境名不能为空")
     with _session_lock:
         result = _session.create_conda_env(req.env_name.strip(), req.python_version.strip())
-    if result.startswith("❌"):
-        raise HTTPException(status_code=400, detail=result.replace("❌ ", ""))
+    if result.startswith("[X]"):
+        raise HTTPException(status_code=400, detail=result.replace("[X] ", ""))
     return {"message": result}
 
 
@@ -1294,13 +1294,13 @@ async def plan_action(req: PlanActionRequest):
     # ---- 不需要锁的操作 ----
     if req.action == "explore":
         _plan_selected = 0
-        return {"message": "✅ 已选择: 继续探索"}
+        return {"message": "[OK] 已选择: 继续探索"}
     elif req.action == "modify":
         _plan_selected = 1
-        return {"message": "✅ 已选择: 修改计划"}
+        return {"message": "[OK] 已选择: 修改计划"}
     elif req.action == "reset":
         _plan_selected = None
-        return {"message": "🔄 已重置，请重新选择操作"}
+        return {"message": "[Refresh] 已重置，请重新选择操作"}
 
     # ---- 需要锁的操作 ----
     session, lock = _get_session_and_lock()
@@ -1311,42 +1311,42 @@ async def plan_action(req: PlanActionRequest):
         if acquired:
             try:
                 session.switch_mode(MODE_SMART)
-                result = {"message": "✅ 已选择: 🚀 切换 Smart 执行\n\n📕 已切换为 Smart 模式，开始执行计划。"}
+                result = {"message": "[OK] 已选择: [Rocket] 切换 Smart 执行\n\n[U+1F4D5] 已切换为 Smart 模式，开始执行计划。"}
             finally:
                 lock.release()
         else:
-            result = {"message": "⏳ 当前有流式请求正在处理，请稍后再试。"}
+            result = {"message": "[Wait] 当前有流式请求正在处理，请稍后再试。"}
         _update_status_cache()
         return result
 
     elif req.action == "confirm":
         if _plan_selected is None:
-            return {"message": "⚠️ 请先选择一个操作"}
+            return {"message": "[Warn]️ 请先选择一个操作"}
 
         acquired = lock.acquire(timeout=10.0)
         if acquired:
             try:
                 if _plan_selected == 0:
-                    result_text = "✅ 已选择: 继续探索\n\n📕 请在对话框继续输入消息。"
+                    result_text = "[OK] 已选择: 继续探索\n\n[U+1F4D5] 请在对话框继续输入消息。"
                 elif _plan_selected == 1:
                     session.switch_mode(MODE_SMART)
-                    result_text = "✅ 已选择: 修改计划\n\n📕 已切换为 Smart 模式，请直接发送修改指令。"
+                    result_text = "[OK] 已选择: 修改计划\n\n[U+1F4D5] 已切换为 Smart 模式，请直接发送修改指令。"
                 elif _plan_selected == 2:
                     session.switch_mode(MODE_SMART)
-                    result_text = "✅ 已选择: 🚀 切换 Smart 执行\n\n📕 已切换为 Smart 模式，开始执行计划。"
+                    result_text = "[OK] 已选择: [Rocket] 切换 Smart 执行\n\n[U+1F4D5] 已切换为 Smart 模式，开始执行计划。"
                 else:
-                    result_text = "⚠️ 未知选择"
+                    result_text = "[Warn]️ 未知选择"
             finally:
                 lock.release()
         else:
-            result_text = "⏳ 当前有流式请求正在处理，请稍后再试。"
+            result_text = "[Wait] 当前有流式请求正在处理，请稍后再试。"
 
         _plan_selected = None
         _update_status_cache()
         return {"message": result_text}
 
     else:
-        return {"message": f"⚠️ 未知操作: {req.action}"}
+        return {"message": f"[Warn]️ 未知操作: {req.action}"}
 
 
 # ============================================================
@@ -1372,7 +1372,7 @@ def find_available_port(host: str = "127.0.0.1", start_port: int = 7860, max_att
     for i in range(max_attempts):
         if check_port_available(host, port):
             if i > 0:
-                print(f"✅ 端口 {start_port} 被占用，已自动切换到端口 {port}")
+                print(f"[OK] 端口 {start_port} 被占用，已自动切换到端口 {port}")
             return port
         port += 1
     raise RuntimeError(f"无法找到可用端口（尝试范围：{start_port}-{port-1}）")
@@ -1518,7 +1518,7 @@ async def apply_personality_template(data: dict, session_id: str = None):
             )
         print(f"[apply_personality_template] Applying template: {template_name}", flush=True)
         if not pe.apply_template(template_name):
-            print(f"[apply_personality_template] ⚠️ Failed to apply template: {template_name}", flush=True)
+            print(f"[apply_personality_template] [Warn]️ Failed to apply template: {template_name}", flush=True)
             return SkillPersonalityResponse(
                 success=False, 
                 message=f"应用人格模板「{template_name}」失败，请检查角色定义文件"
@@ -1935,6 +1935,31 @@ async def get_all_templates(session_id: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+@app.get("/api/personality/templates/{name}/soul")
+async def get_template_soul(name: str):
+    """获取角色 soul.md 内容（用于前端悬停预览）"""
+    try:
+        from urllib.parse import unquote
+        import os
+        role_name = unquote(name)
+        personas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "personas")
+        soul_path = os.path.join(personas_dir, role_name, "soul.md")
+        if os.path.isfile(soul_path):
+            with open(soul_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            return {"success": True, "content": content}
+        else:
+            from .personality_models import load_custom_templates
+            custom = load_custom_templates()
+            if role_name in custom:
+                soul_md = custom[role_name].get("soul_md", "")
+                if soul_md:
+                    return {"success": True, "content": soul_md}
+            return {"success": False, "content": "", "error": "soul.md not found"}
+    except Exception as e:
+        return {"success": False, "content": "", "error": str(e)}
+
 @app.post("/api/personality/templates/custom")
 async def create_custom_template(data: dict, session_id: str = None):
     """创建自定义人格模板"""
@@ -1989,14 +2014,14 @@ def start_web_api(host="127.0.0.1", port=None):
     try:
         port = find_available_port(host, port)
     except RuntimeError as e:
-        print(f"❌ {e}")
+        print(f"[X] {e}")
         return
 
     print(f"{'='*50}")
-    print(f"🖥 TennineClaw v{__version__} - Web API")
+    print(f"[Desktop] TennineClaw v{__version__} - Web API")
     print(f"{'='*50}")
-    print(f"📍 服务器地址: http://{host}:{port}")
-    print(f"📉 API 文档:   http://{host}:{port}/docs")
+    print(f"[U+1F4CD] 服务器地址: http://{host}:{port}")
+    print(f"[U+1F4C9] API 文档:   http://{host}:{port}/docs")
     print(f"{'='*50}")
 
     # 无限制超时配置，仅在 AI 报错或连接断开时停止

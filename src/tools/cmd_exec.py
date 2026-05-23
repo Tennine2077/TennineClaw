@@ -32,29 +32,17 @@ def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
     # ---- 安全检查 ----
     safety = check_command_safety(cmd)
 
-    # 高危命令：需要用户确认
+    # 【修改】高危命令：直接拦截，不再要求用户确认
     if not safety["safe"] and safety.get("requires_confirmation"):
-        if confirm:
-            # 用户已确认，跳过安全检查直接执行
-            pass
-        else:
-            # 返回确认提示，等待用户确认
-            return (
-                f"{safety['reason']}\n\n"
-                f"🔐 **需要确认**\n"
-                f"请在对话框中输入 `CONFIRM_RISK` 确认执行该命令，"
-                f"或输入 `CANCEL` 取消操作。\n"
-                f"确认后 AI 将使用 `run_cmd(cmd=..., confirm=True)` 执行。"
-            )
+        return "当前指令安全性不通过，请尝试其他方法"
 
     # 其他不安全的场景（非 requires_confirmation 的 safe=False——预留）
     if not safety["safe"]:
         return safety["reason"]
 
-    # 警告级命令：自动放行，打印提示
+    # 【修改】警告级命令：直接拦截，不再自动放行执行
     if safety.get("warn"):
-        print(f"\n⚠️ {safety['reason']}")
-        print("   🔄 已自动放行（可继续执行）")
+        return "当前指令安全性不通过，请尝试其他方法"
 
     # ---- 执行命令 ----
     try:
@@ -68,31 +56,33 @@ def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
             if not output.strip():
                 return "✅ 命令执行成功（无输出）"
             if len(output) > 100000:
-                output = output[:100000] + f"\n\n...（输出过长，已截断至 100000 字符，共 {len(output)} 字符）"
+                output = output[:100000] + "\n\n...（输出过长，已截断）"
             return output
         else:
-            error_msg = proc.stderr.strip() if proc.stderr.strip() else "未知错误"
-            return f"❌ 命令执行失败 (返回码: {proc.returncode})\n错误信息: {error_msg[:10000]}"
+            error_msg = proc.stderr.strip() if proc.stderr.strip() else f"命令执行失败（返回码: {proc.returncode}）"
+            if len(error_msg) > 2000:
+                error_msg = error_msg[:2000] + "\n...（错误信息过长，已截断）"
+            return f"❌ 命令执行失败\n{error_msg}"
     except subprocess.TimeoutExpired:
-        return "⚠️ 命令执行超时（30秒），已自动终止"
+        return "❌ 命令执行超时（超过 30 秒）"
     except Exception as e:
-        return f"异常: {e}"
+        return f"❌ 命令执行异常: {e}"
 
 
 # ============================================================
-# dict 参数包装器
+# dict 参数兼容包装
 # ============================================================
 def tool_run_cmd_compat(args: dict = None) -> str:
-    """接受 dict 参数调用 tool_run_cmd
+    """通过 dict 参数调用 tool_run_cmd
 
-    （tool_run_cmd_compat({"cmd": "..."})），
-    内部转换为具名参数调用标准接口。
+    使用 tool_run_cmd_compat({"cmd": "..."}) 调用，
+    内部转换为关键字参数调用标准接口。
 
     Args:
-        args: 包含 "cmd" 键的参数字典
+        args: 包含 "cmd" 等参数的字典
 
     Returns:
-        与 tool_run_cmd 相同
+        同 tool_run_cmd
     """
     if args is None:
         args = {}
