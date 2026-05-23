@@ -458,4 +458,29 @@ def create_default_skills() -> SkillTree:
     )
     tree.combos[combo_ops.id] = combo_ops
 
+    # ── 第 7 步：扫描 skills_custom/ 目录，注册自定义技能 ──
+    try:
+        from . import skill_loader
+        scanned = skill_loader.scan_all_skills()
+        for sk_id, meta in scanned.items():
+            if not meta.get("is_builtin", True) and sk_id not in tree.skills:
+                extra_skill = SkillDefinition(
+                    id=sk_id,
+                    name=meta.get("name", sk_id),
+                    description=meta.get("short_description", ""),
+                    type=SkillType.ACTIVE,
+                    tier=SkillTier.BASIC,
+                    cooldown_rounds=0,
+                    trigger_event=TriggerEvent.ON_USER_MESSAGE,
+                    proficiency=SkillProficiency(
+                        related_tools=meta.get("associated_tools", [])
+                    ),
+                    tags=meta.get("tags", []),
+                    icon=meta.get("icon", "⚡"),
+                )
+                tree.add_skill(extra_skill)
+                print(f"[skill_engine] 已注册自定义技能: {meta.get('name', sk_id)}")
+    except Exception as e:
+        print(f"[skill_engine] 扫描自定义技能失败: {e}")
+
     return tree

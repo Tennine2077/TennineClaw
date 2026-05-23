@@ -646,6 +646,31 @@ def init_global_skill_registry() -> Dict[str, dict]:
                     # 确保 builtin 标记正确
                     registry[sk_id]["is_builtin"] = True
                     registry[sk_id]["created_by"] = "system"
+            # 扫描 skills_custom/ 目录，注册自定义技能
+            try:
+                from . import skill_loader
+                scanned = skill_loader.scan_all_skills()
+                for sk_id, meta in scanned.items():
+                    if not meta.get("is_builtin", True) and sk_id not in registry:
+                        entry = {
+                            "id": sk_id,
+                            "name": meta.get("name", sk_id),
+                            "icon": meta.get("icon", "⚡"),
+                            "type": meta.get("type", "active"),
+                            "tier": meta.get("tier", "basic"),
+                            "short_description": meta.get("short_description", ""),
+                            "detail_content": "",
+                            "tags": meta.get("tags", []),
+                            "associated_tools": meta.get("associated_tools", []),
+                            "is_builtin": False,
+                            "created_by": "user",
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat(),
+                        }
+                        registry[sk_id] = entry
+                        changed = True
+            except Exception:
+                pass
             if changed:
                 with open(GLOBAL_SKILL_REGISTRY_PATH, 'w', encoding='utf-8') as f:
                     json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
@@ -663,6 +688,31 @@ def init_global_skill_registry() -> Dict[str, dict]:
         entry["created_at"] = datetime.now().isoformat()
         entry["updated_at"] = datetime.now().isoformat()
         registry[sk_id] = entry
+
+    # 扫描 skills_custom/ 目录，注册自定义技能
+    try:
+        from . import skill_loader
+        scanned = skill_loader.scan_all_skills()
+        for sk_id, meta in scanned.items():
+            if not meta.get("is_builtin", True) and sk_id not in registry:
+                entry = {
+                    "id": sk_id,
+                    "name": meta.get("name", sk_id),
+                    "icon": meta.get("icon", "⚡"),
+                    "type": meta.get("type", "active"),
+                    "tier": meta.get("tier", "basic"),
+                    "short_description": meta.get("short_description", ""),
+                    "detail_content": "",
+                    "tags": meta.get("tags", []),
+                    "associated_tools": meta.get("associated_tools", []),
+                    "is_builtin": False,
+                    "created_by": "user",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                }
+                registry[sk_id] = entry
+    except Exception:
+        pass
 
     with open(GLOBAL_SKILL_REGISTRY_PATH, 'w', encoding='utf-8') as f:
         json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
@@ -1188,6 +1238,31 @@ def init_global_skill_registry() -> Dict[str, dict]:
                     # 确保 builtin 标记正确
                     registry[sk_id]["is_builtin"] = True
                     registry[sk_id]["created_by"] = "system"
+            # 扫描 skills_custom/ 目录，注册自定义技能
+            try:
+                from . import skill_loader
+                scanned = skill_loader.scan_all_skills()
+                for sk_id, meta in scanned.items():
+                    if not meta.get("is_builtin", True) and sk_id not in registry:
+                        entry = {
+                            "id": sk_id,
+                            "name": meta.get("name", sk_id),
+                            "icon": meta.get("icon", "⚡"),
+                            "type": meta.get("type", "active"),
+                            "tier": meta.get("tier", "basic"),
+                            "short_description": meta.get("short_description", ""),
+                            "detail_content": "",
+                            "tags": meta.get("tags", []),
+                            "associated_tools": meta.get("associated_tools", []),
+                            "is_builtin": False,
+                            "created_by": "user",
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat(),
+                        }
+                        registry[sk_id] = entry
+                        changed = True
+            except Exception:
+                pass
             if changed:
                 with open(GLOBAL_SKILL_REGISTRY_PATH, 'w', encoding='utf-8') as f:
                     json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
@@ -1205,6 +1280,31 @@ def init_global_skill_registry() -> Dict[str, dict]:
         entry["created_at"] = datetime.now().isoformat()
         entry["updated_at"] = datetime.now().isoformat()
         registry[sk_id] = entry
+
+    # 扫描 skills_custom/ 目录，注册自定义技能
+    try:
+        from . import skill_loader
+        scanned = skill_loader.scan_all_skills()
+        for sk_id, meta in scanned.items():
+            if not meta.get("is_builtin", True) and sk_id not in registry:
+                entry = {
+                    "id": sk_id,
+                    "name": meta.get("name", sk_id),
+                    "icon": meta.get("icon", "⚡"),
+                    "type": meta.get("type", "active"),
+                    "tier": meta.get("tier", "basic"),
+                    "short_description": meta.get("short_description", ""),
+                    "detail_content": "",
+                    "tags": meta.get("tags", []),
+                    "associated_tools": meta.get("associated_tools", []),
+                    "is_builtin": False,
+                    "created_by": "user",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                }
+                registry[sk_id] = entry
+    except Exception:
+        pass
 
     with open(GLOBAL_SKILL_REGISTRY_PATH, 'w', encoding='utf-8') as f:
         json.dump({"skills": registry}, f, ensure_ascii=False, indent=2)
