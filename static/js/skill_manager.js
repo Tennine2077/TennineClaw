@@ -8,12 +8,15 @@ var skillMgrEditMap = {};
 function openSkillManagerModal() {
     Promise.all([
         fetch('/api/skills/registry').then(function(r) { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); }),
-        fetch('/api/personality/templates/all').then(function(r) { if (!r.ok) return {}; return r.json(); })
+        fetch('/api/personality/templates/all').then(function(r) { if (!r.ok) return {}; return r.json(); }),
+        fetch('/api/personality/equipped-skills').then(function(r) { if (!r.ok) return {}; return r.json(); })
     ])
     .then(function(results) {
         var skillsData = results[0];
         var personasData = results[1] || {};
+        var eqData = results[2] || {};
         currentSkillsState.skills = (skillsData && skillsData.success) ? (skillsData.data || []) : [];
+        currentSkillsState.equippedIds = eqData.equipped_ids || [];
         var tmpl = personasData.data || personasData.templates || {};
         skillMgrAllPersonas = Object.keys(tmpl);
         skillMgrEditMap = {};
@@ -91,7 +94,7 @@ function renderDropdown() {
     footer.className = 'skill-menu-footer';
     footer.innerHTML =
         '<button class="skill-menu-save-btn" style="flex:0 0 auto;background:var(--bg-tertiary,rgba(128,128,128,0.15));color:var(--text-primary);padding:8px 10px;border:1px dashed var(--border-color,#444);" onclick="showGitHubImport()">📥 从 GitHub 导入</button>' +
-        '<button class="skill-menu-save-btn" onclick="saveSkillPersonaMapping()">💾 保存</button>';
+        '<button class="skill-menu-save-btn" onclick="saveSkillPersonaMapping()">💾 保存角色关联</button>';
     menu.appendChild(footer);
 
     document.body.appendChild(menu);
@@ -133,6 +136,18 @@ function renderSkillMenuItem(s) {
     item.addEventListener('mouseenter', function() {
         removeAllSubmenuPortals();
         showSubmenuPortal(s, item);
+    });
+
+    // ── click: 切换技能激活/装备状态 ──
+    item.addEventListener('click', function() {
+        // 调用 app.js 中的 toggleSkill，立即切换激活状态并写入后端
+        toggleSkill(s.id);
+        // 乐观更新 UI：圆点颜色即时翻转，不等 API 返回
+        var dot = item.querySelector('[style*="border-radius:50%"]');
+        if (dot) {
+            var wasOn = currentSkillsState.equippedIds.indexOf(s.id) >= 0;
+            dot.style.background = wasOn ? '#666' : '#22c55e';
+        }
     });
 
     return item;
@@ -347,12 +362,4 @@ function closeSkillMenuDropdown() {
     for (var i = 0; i < overlays.length; i++) overlays[i].remove();
 }
 
-// ── 初始化：为右上角技能管理按钮绑定点击事件 ──
-document.addEventListener('DOMContentLoaded', function() {
-    var btn = document.getElementById('skillMenuBtn');
-    if (btn) {
-        btn.addEventListener('click', function() {
-            openSkillManagerModal();
-        });
-    }
-});
+

@@ -208,27 +208,26 @@ function renderSkillsCompact() {
     var totalCount = skills.length;
     var equippedCount = equippedSkills.length;
 
-    // 紧凑徽标：仅显示计数，点击展开详情
+    // 紧凑徽标：仅显示已装备技能数量，点击展开详情
     var html = '<div class="skills-compact-toggle" onclick="toggleSkillsExpand()">';
     html += '<span style="font-size:13px;">🛠️</span>';
     html += '<span style="font-size:13px; font-weight:600; color:var(--text-primary); margin-left:4px;">' + equippedCount + '</span>';
-    html += '<span style="font-size:10px; color:var(--text-muted); margin-left:2px;">/ ' + totalCount + '</span>';
+    html += '<span style="font-size:10px; color:var(--text-muted); margin-left:2px;">个技能</span>';
     html += '<span id="skillsExpandIcon" style="margin-left:auto; font-size:10px; color:var(--text-muted);">▶</span>';
     html += '</div>';
 
     // 展开详情面板（初始隐藏）
     html += '<div id="skillsExpandPanel" class="skills-expand-panel" style="display:none; margin-top:4px;">';
 
-    skills.forEach(function(s) {
-        var isOn = equippedIds.indexOf(s.id) >= 0;
+    equippedSkills.forEach(function(s) {
         var sq = "'";
         var escapedName = (s.name || s.id).replace(/'/g, '\'');
         var escapedDesc = (s.short_description || '').replace(/'/g, '\'');
-        html += '<div class="skills-expand-item" data-skill-name="' + escapedName + '" data-skill-desc="' + escapedDesc + '" onclick="toggleSkill(' + sq + s.id + sq + ')">';
+        html += '<div class="skills-expand-item" data-skill-name="' + escapedName + '" data-skill-desc="' + escapedDesc + '" data-skill-id="' + s.id + '">';
         html += '<div class="skills-expand-item-top">';
         html += '<span style="font-size:14px; flex-shrink:0;">' + (s.icon || '⚡') + '</span>';
         html += '<span style="flex:1; font-size:12px; font-weight:500; color:var(--text-primary); margin-left:4px;">' + (s.name || s.id) + '</span>';
-        html += '<span style="font-size:11px; padding:1px 6px; border-radius:8px; flex-shrink:0; background:' + (isOn ? 'rgba(34,197,94,0.2)' : 'rgba(100,100,100,0.15)') + '; color:' + (isOn ? '#22c55e' : '#888') + ';">' + (isOn ? '✓ 已启用' : '禁用') + '</span>';
+        html += '<span style="font-size:11px; padding:1px 6px; border-radius:8px; flex-shrink:0; background:rgba(34,197,94,0.2); color:#22c55e;">✓ 已启用</span>';
         html += '</div>';
         if (s.short_description) {
             html += '<div class="skills-expand-item-desc">' + s.short_description + '</div>';
@@ -255,7 +254,7 @@ function renderSkillsCompact() {
                 var name = item.dataset.skillName || '未知技能';
                 var desc = item.dataset.skillDesc || '暂无描述';
                 // 异步获取完整 description.md（后端读取 description.md 文件）
-                var skId = item.getAttribute('onclick').match(/'([^']+)'/);
+                var skId = item.dataset.skillId ? [null, item.dataset.skillId] : null;
                 if (skId && skId[1]) {
                     fetch('/api/skills/registry/' + encodeURIComponent(skId[1]) + '/detail')
                         .then(function(r) { return r.json(); })
@@ -405,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         planBtn: $('planBtn'),
 
         themeToggle: $('themeToggle'),
+        skillMenuBtn: $('skillMenuBtn'),
 
         // 左侧会话栏
         leftSidebar: $('leftSidebar'),
@@ -2274,6 +2274,9 @@ async function handleBranchClick(messageIndex) {
     // 主题切换
     el.themeToggle.addEventListener('click', toggleTheme);
 
+    // 技能管理
+    el.skillMenuBtn.addEventListener('click', openSkillManagerModal);
+
     // Plan 菜单
     el.planExploreBtn.addEventListener('click', () => handlePlanAction('explore'));
     el.planModifyBtn.addEventListener('click', () => handlePlanAction('modify'));
@@ -2916,9 +2919,25 @@ function toggleSkill(skillId) {
             // Step 4: Re-render UI
             renderSkillsCompact();
             renderSkillManager();
+            // 如果技能管理下拉面板已打开，同步刷新其状态
+            if (document.getElementById('skillMenuDropdown') && typeof renderDropdown === 'function') {
+                renderDropdown();
+            }
         })
         .catch(function(e) {
             console.error('toggleSkill error:', e);
+            showToast('❌ 技能切换失败: ' + (e.message || '网络错误'), 'error');
+            // 回滚本地状态：重新拉取真实 equipped 状态
+            fetch('/api/personality/equipped-skills')
+                .then(function(r) { return r.json(); })
+                .then(function(eqData) {
+                    currentSkillsState.equippedIds = eqData.equipped_ids || [];
+                    renderSkillsCompact();
+                    if (document.getElementById('skillMenuDropdown') && typeof renderDropdown === 'function') {
+                        renderDropdown();
+                    }
+                })
+                .catch(function() {});
         });
 }
 

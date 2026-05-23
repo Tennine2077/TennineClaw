@@ -1960,6 +1960,40 @@ async def get_template_soul(name: str):
     except Exception as e:
         return {"success": False, "content": "", "error": str(e)}
 
+
+
+# ============================================================
+# 技能-人格关联 API（供 saveSkillPersonaMapping 前端调用）
+# ============================================================
+
+
+@app.put("/api/skills/{skill_id}/personas")
+async def set_skill_personas_api(skill_id: str, data: dict, session_id: str = None):
+    """批量设置技能的使用者角色列表"""
+    try:
+        from .skill_models import set_skill_personas as _set_skill_personas
+        persona_names = data.get("persona_names", [])
+        if not isinstance(persona_names, list):
+            raise HTTPException(status_code=400, detail="persona_names must be a list")
+        changed = _set_skill_personas(skill_id, persona_names)
+        return {"success": True, "changed": changed, "message": f"已更新 {skill_id} 的角色关联"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/skills/sync-personas")
+async def sync_skill_personas_api(session_id: str = None):
+    """以技能端为准，同步所有人格的 equipped_skill_ids"""
+    try:
+        from .skill_models import sync_all_persona_skills as _sync_all
+        result = _sync_all()
+        return {"success": True, "message": "技能-人格关联同步完成", "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/personality/templates/custom")
 async def create_custom_template(data: dict, session_id: str = None):
     """创建自定义人格模板"""

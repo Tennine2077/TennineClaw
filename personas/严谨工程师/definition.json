@@ -27,17 +27,17 @@
   },
   "memories": [],
   "equipped_skill_ids": [
-    "skill_git",
     "skill_cmd",
     "skill_context",
     "skill_edit",
+    "skill_git",
     "skill_info",
     "skill_search"
   ],
   "created_skill_ids": [],
-  "created_at": "2026-05-23T23:47:23.564438",
-  "updated_at": "2026-05-23T23:47:23.564438",
+  "created_at": "2026-05-24T03:17:37.590840",
+  "updated_at": "2026-05-24T03:17:37.590846",
   "version": "1.0.0",
-  "saved_at": "2026-05-23T23:47:23.568952",
+  "saved_at": "2026-05-24T03:17:37.593838",
   "interaction_count": 0
 }
