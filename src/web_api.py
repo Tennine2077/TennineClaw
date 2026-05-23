@@ -476,6 +476,25 @@ async def create_session():
     return {"session_id": sid, "status": "success"}
 
 
+def _map_visible_index_to_raw(visible_index: int, raw_msgs: list) -> int:
+    """将前端可见索引映射为 _display_msgs 的原始索引
+    
+    前端渲染时跳过 system 和 tool 角色消息（与 get_session_messages 过滤逻辑一致），
+    而 _display_msgs 包含全部消息。此函数将前端传来的可见索引转换为
+    后端存储数组的实际索引。
+    """
+    count = -1
+    for i, m in enumerate(raw_msgs):
+        role = m.get("role", "")
+        if role == "system":
+            continue
+        if role == "tool":
+            continue
+        count += 1
+        if count == visible_index:
+            return i
+    return -1
+
 @app.post("/api/session/branch")
 async def create_branch_session(req: BranchRequest):
     """从指定消息创建分支会话"""
@@ -486,9 +505,13 @@ async def create_branch_session(req: BranchRequest):
     
     with src_lock:
         src_msgs = list(getattr(src_session, '_display_msgs', src_session.msgs))
-        msg_idx = req.message_index
+        visible_idx = req.message_index
+        # 将前端可见索引（跳过 system/tool）映射为 _display_msgs 原始索引
+        msg_idx = _map_visible_index_to_raw(visible_idx, src_msgs)
+        if msg_idx < 0:
+            raise HTTPException(status_code=400, detail=f"前端可见索引 {visible_idx} 无法映射到原始消息数组，请检查数据一致性")
     
-    if msg_idx < 0 or msg_idx >= len(src_msgs):
+    if visible_idx < 0 or msg_idx < 0 or msg_idx >= len(src_msgs):
         raise HTTPException(status_code=400, detail=f"消息索引越界: {msg_idx}, 总消息数: {len(src_msgs)}")
     
     # 获取触发消息的预览文本
