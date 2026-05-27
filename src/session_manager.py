@@ -21,6 +21,8 @@ def _estimate_msgs_tokens(msgs: list) -> int:
     """内联 Token 估算函数（避免相对导入问题）"""
     total = 0
     for msg in msgs:
+        if not isinstance(msg, dict):
+            continue
         txt = msg.get("content", "") or ""
         cjk = sum(1 for c in txt if '\u4e00' <= c <= '\u9fff')
         other = len(txt) - cjk
@@ -123,10 +125,24 @@ def restore_session(session, path: str) -> str:
     """从 JSON 文件恢复会话到 AgentSession 对象"""
     data = load_session(path)
     
-    # 恢复核心数据
-    session.msgs = data.get("msgs", [session.msgs])
-    # 恢复展示层上下文（与 msgs 同步，展示层永不压缩）
-    session._display_msgs = [dict(m) for m in session.msgs]
+    # 恢复核心数据（兼容新旧格式）
+    raw_msgs = data.get("msgs", data.get("msgs_model", data.get("msgs_display", None)))
+    if raw_msgs is None:
+        # 连旧格式也没有 → 保留 session 原有 msgs（默认含 system prompt）
+        raw_msgs = session.msgs
+    elif isinstance(raw_msgs, list) and len(raw_msgs) > 0 and isinstance(raw_msgs[0], list):
+        # 防御：检测到嵌套列表 [[...]]，自动解一层
+        import warnings as _w
+        _w.warn(f"[session_manager] 检测到嵌套 msgs 结构，正在自动修复: {path}")
+        raw_msgs = raw_msgs[0] if raw_msgs[0] else []
+    elif not isinstance(raw_msgs, list):
+        # 类型异常 → 重置为空列表
+        import warnings as _w
+        _w.warn(f"[session_manager] msgs 类型异常 ({type(raw_msgs).__name__})，已重置: {path}")
+        raw_msgs = []
+    session.msgs = raw_msgs
+    # 恢复展示层上下文（仅复制 dict 类型消息）
+    session._display_msgs = [dict(m) for m in session.msgs if isinstance(m, dict)]
     
     # Token 恢复：如果保存的为 0，重新估算
     _loaded_tokens = data.get("current_tokens", 0)
@@ -176,10 +192,12 @@ def restore_session(session, path: str) -> str:
     from .prompts import build_system_prompt
     session.system_prompt = build_system_prompt(session.get_mode())
     
-    # 确保 system prompt 正确
-    if session.msgs and session.msgs[0]["role"] == "system":
+    # 确保 system prompt 正确（带类型安全检查）
+    if session.msgs and isinstance(session.msgs[0], dict) and session.msgs[0].get("role") == "system":
         session.msgs[0]["content"] = session.system_prompt
     else:
+        if not isinstance(session.msgs, list):
+            session.msgs = []
         session.msgs.insert(0, {"role": "system", "content": session.system_prompt})
     
     title_info = f"「{session.session_title}」" if session.session_title else "（无标题）"
