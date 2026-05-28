@@ -6,6 +6,7 @@
 
 import os
 import subprocess
+from .search_ops import _is_binary
 
 
 def _run_git(args: list, directory: str = ".", timeout: int = 30) -> str:

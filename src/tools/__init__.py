@@ -10,7 +10,7 @@ import traceback
 from typing import Any, Dict, Optional
 
 from .cmd_exec import tool_run_cmd
-from .file_ops import tool_read_file, tool_write_file, tool_delete_file
+from .file_ops import tool_read_file, tool_write_file, tool_delete_file, tool_edit_file, tool_append_file, tool_rename_file, tool_copy_file, tool_file_info
 from .dir_ops import tool_list_files, tool_search_files, tool_create_directory
 from .info_ops import tool_get_system_info, tool_get_current_time
 from .search_ops import tool_grep, tool_replace, tool_count_lines, tool_find_files, tool_diff

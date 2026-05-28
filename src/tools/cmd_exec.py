@@ -7,8 +7,48 @@
 
 import subprocess
 import platform
+import locale
+import os as _os
 
 from ..safety import check_command_safety
+
+
+def _decode_output(data: bytes) -> str:
+    """智能解码子进程输出，自动适配系统编码
+
+    解码策略（按优先级）：
+    1. 先尝试 UTF-8 解码（chcp 65001 模式下输出为 UTF-8）
+    2. 失败后回退到系统编码（如 GBK/cp936，普通模式下输出为 GBK）
+    3. 最终兜底：忽略无法解码的字节
+
+    这样无论 chcp 是否生效，都能正确解码中文和 emoji 字符。
+    """
+    if not data:
+        return ""
+
+    # 1. 优先尝试 UTF-8（chcp 65001 模式）
+    try:
+        return data.decode('utf-8')
+    except UnicodeDecodeError:
+        pass
+
+    # 2. 回退到系统编码（如 GBK）
+    try:
+        system_encoding = locale.getpreferredencoding()
+        return data.decode(system_encoding, errors='replace')
+    except (LookupError, UnicodeDecodeError):
+        pass
+
+    # 3. 终极兜底：UTF-8 忽略错误
+    return data.decode('utf-8', errors='ignore')
+
+
+def _build_env() -> dict:
+    """构建子进程环境变量，确保 UTF-8 编码兼容"""
+    env = _os.environ.copy()
+    # 设置 PYTHONIOENCODING 确保 Python 子进程的 stdout/stderr 使用 UTF-8
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
 
 
 def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
@@ -32,7 +72,7 @@ def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
     # ---- 安全检查 ----
     safety = check_command_safety(cmd)
 
-    # 【修改】高危命令：直接拦截，不再要求用户确认
+    # 高危命令：直接拦截，不再要求用户确认
     if not safety["safe"] and safety.get("requires_confirmation"):
         return "当前指令安全性不通过，请尝试其他方法"
 
@@ -40,53 +80,41 @@ def tool_run_cmd(cmd: str = "", confirm: bool = False) -> str:
     if not safety["safe"]:
         return safety["reason"]
 
-    # 【修改】警告级命令：直接拦截，不再自动放行执行
+    # 警告级命令：直接拦截，不再自动放行执行
     if safety.get("warn"):
         return "当前指令安全性不通过，请尝试其他方法"
 
     # ---- 执行命令 ----
     try:
+        # Windows 下设置 UTF-8 代码页，确保中文正常输出
         safe_cmd = f"chcp 65001 >nul 2>&1 && {cmd}" if platform.system() == "Windows" else cmd
+
+        # 构建 UTF-8 友好的环境变量
+        env = _build_env()
+
+        # 使用 bytes 模式捕获输出，避免 text=True 时的编码问题
         proc = subprocess.run(
-            safe_cmd, shell=True, capture_output=True, text=True,
-            encoding='utf-8', errors='replace', timeout=30
+            safe_cmd, shell=True, capture_output=True,
+            timeout=30, env=env
         )
+
+        # 智能解码 stdout 和 stderr
+        stdout_str = _decode_output(proc.stdout)
+        stderr_str = _decode_output(proc.stderr)
+
         if proc.returncode == 0:
-            output = proc.stdout
+            output = stdout_str
             if not output.strip():
-                return "✅ 命令执行成功（无输出）"
+                return "命令执行成功（无输出）"
             if len(output) > 100000:
                 output = output[:100000] + "\n\n...（输出过长，已截断）"
             return output
         else:
-            error_msg = proc.stderr.strip() if proc.stderr.strip() else f"命令执行失败（返回码: {proc.returncode}）"
+            error_msg = stderr_str.strip() if stderr_str.strip() else f"命令执行失败（返回码: {proc.returncode}）"
             if len(error_msg) > 2000:
                 error_msg = error_msg[:2000] + "\n...（错误信息过长，已截断）"
-            return f"❌ 命令执行失败\n{error_msg}"
+            return f"命令执行失败\n{error_msg}"
     except subprocess.TimeoutExpired:
-        return "❌ 命令执行超时（超过 30 秒）"
+        return "命令执行超时（超过 30 秒）"
     except Exception as e:
-        return f"❌ 命令执行异常: {e}"
-
-
-# ============================================================
-# dict 参数兼容包装
-# ============================================================
-def tool_run_cmd_compat(args: dict = None) -> str:
-    """通过 dict 参数调用 tool_run_cmd
-
-    使用 tool_run_cmd_compat({"cmd": "..."}) 调用，
-    内部转换为关键字参数调用标准接口。
-
-    Args:
-        args: 包含 "cmd" 等参数的字典
-
-    Returns:
-        同 tool_run_cmd
-    """
-    if args is None:
-        args = {}
-    return tool_run_cmd(
-        cmd=args.get("cmd", ""),
-        confirm=args.get("confirm", False)
-    )
+        return f"异常: {e}"
