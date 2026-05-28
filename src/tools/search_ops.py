@@ -167,13 +167,16 @@ def tool_grep(
         )
 
     summary = (
-        f"🔍 Grep 结果: '{pattern}'\n"
-        f"   目录: {os.path.abspath(directory)} | 文件: {glob if glob else '*'}\n"
-        f"   扫描 {total_files} 个文件，找到 {file_count} 个匹配文件\n"
+        f"🔍 Grep 结果: '{pattern}'\n" +
+        f"   目录: {os.path.abspath(directory)} | 文件: {glob if glob else '*'}\n" +
+        f"   扫描 {total_files} 个文件，找到 {file_count} 个匹配文件\n" +
         "─" * 50
     )
 
-    output = [summary] + results
+    # 去重：过滤掉 results 中可能混入的 summary 副本
+    summary_prefix = "🔍 Grep 结果:"
+    clean_results = [r for r in results if "Grep 结果" not in r]
+    output = [summary] + clean_results
     return "\n".join(output)
 
 

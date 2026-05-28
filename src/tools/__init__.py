@@ -585,7 +585,84 @@ TOOLS = [
                 ]
             }
         }
-    }
+    },
+    # === 文件编辑 ===
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": "编辑文件指定行内容（替换/插入/删除），行号从 1 开始",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件路径"},
+                    "line": {"type": "integer", "description": "目标行号（从 1 开始）"},
+                    "text": {"type": "string", "description": "要写入的内容（mode=delete 时忽略）"},
+                    "mode": {"type": "string", "enum": ["replace", "insert", "delete"], "description": "操作模式：replace=替换行内容，insert=在指定行后插入新内容，delete=删除指定行"}
+                },
+                "required": ["path", "line"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "append_file",
+            "description": "追加内容到文件末尾（文件不存在时自动创建）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件路径"},
+                    "text": {"type": "string", "description": "要追加的内容"}
+                },
+                "required": ["path", "text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rename_file",
+            "description": "重命名或移动文件/目录，自动创建目标父目录",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {"type": "string", "description": "源路径（文件或目录）"},
+                    "dst": {"type": "string", "description": "目标路径"}
+                },
+                "required": ["src", "dst"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "copy_file",
+            "description": "复制文件或目录（保持元数据）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {"type": "string", "description": "源路径"},
+                    "dst": {"type": "string", "description": "目标路径"}
+                },
+                "required": ["src", "dst"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "file_info",
+            "description": "获取文件/目录详细信息（大小、修改时间、类型等）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件或目录路径"}
+                },
+                "required": ["path"]
+            }
+        }
+    },
 ]
 
 # ============================================================
@@ -632,6 +709,11 @@ TOOL_FUNCS: Dict[str, Any] = {
     "git_commit_stats": tool_git_commit_stats,
     "show_file": tool_show_file,
     "load_skill_detail": tool_load_skill_detail,
+    "edit_file": tool_edit_file,
+    "append_file": tool_append_file,
+    "rename_file": tool_rename_file,
+    "copy_file": tool_copy_file,
+    "file_info": tool_file_info,
 }
 
 
@@ -738,6 +820,12 @@ _TOOL_REQUIRED_PARAMS: Dict[str, list] = {
     "git_diff": [],
     "git_commit_stats": [],
     "show_file": ["path"],
+    # 文件编辑
+    "edit_file": ["path", "line"],
+    "append_file": ["path", "text"],
+    "rename_file": ["src", "dst"],
+    "copy_file": ["src", "dst"],
+    "file_info": ["path"],
 }
 # 工具超时配置（秒）
 _TOOL_TIMEOUTS: Dict[str, float] = {
@@ -762,8 +850,13 @@ _TOOL_TIMEOUTS: Dict[str, float] = {
     "git_diff": 15.0,
     "git_commit_stats": 15.0,
     "show_file": 10.0,
+    "edit_file": 10.0,
+    "append_file": 10.0,
+    "rename_file": 10.0,
+    "copy_file": 10.0,
+    "file_info": 10.0,
 }
-MAX_RESULT_CHARS = 30000  # 结果最大字符数
+MAX_RESULT_CHARS = 500000  # 结果最大字符数
 def dispatch_tool(
     name: str,
     args: Optional[Dict[str, Any]] = None,
